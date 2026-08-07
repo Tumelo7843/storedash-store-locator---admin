@@ -1,0 +1,11 @@
+{
+  "name": "@storedash/customer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'apps/customer not scaffolded yet'",
+    "build": "echo 'apps/customer not scaffolded yet'",
+    "typecheck": "echo 'apps/customer not scaffolded yet'"
+  }
+}

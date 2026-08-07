@@ -1,0 +1,11 @@
+{
+  "name": "@storedash/admin",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'apps/admin not scaffolded yet'",
+    "build": "echo 'apps/admin not scaffolded yet'",
+    "typecheck": "echo 'apps/admin not scaffolded yet'"
+  }
+}
