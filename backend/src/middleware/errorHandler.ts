@@ -17,6 +17,13 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     return;
   }
 
+  // express.json() throws a SyntaxError (via body-parser) for malformed
+  // request bodies — that's a client mistake, not a server failure.
+  if (err instanceof SyntaxError && 'body' in err) {
+    res.status(400).json({ error: { message: 'Malformed JSON in request body', code: 'BAD_REQUEST' } });
+    return;
+  }
+
   console.error(`Unhandled error on ${req.method} ${req.path}:`, err);
   res.status(500).json({ error: { message: 'Internal server error', code: 'INTERNAL_ERROR' } });
 };

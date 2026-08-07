@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: storedash-backend
+    runtime: node
+    plan: starter
+    region: oregon
+    rootDir: .
+    # Installs every workspace (backend + shared) since the backend imports
+    # @storedash/shared as a workspace dependency.
+    buildCommand: npm install
+    # Runs the backend directly via tsx rather than a separate compile step —
+    # see backend/package.json and the README's "Production build" section
+    # for why.
+    startCommand: npm run start --workspace=backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_BASE64
+        sync: false

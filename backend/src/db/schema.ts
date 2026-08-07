@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
   boolean,
+  index,
   integer,
   jsonb,
   numeric,
@@ -70,7 +71,13 @@ export const storeAdmins = pgTable(
     storeId: integer('store_id').notNull().references(() => stores.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [unique('store_admins_user_store_unique').on(table.userId, table.storeId)],
+  (table) => [
+    unique('store_admins_user_store_unique').on(table.userId, table.storeId),
+    // The unique constraint above indexes (userId, storeId) with userId
+    // leading, which doesn't help a lookup by storeId alone (e.g. "who
+    // manages store X") — hence the separate index here.
+    index('store_admins_store_id_idx').on(table.storeId),
+  ],
 );
 
 export const products = pgTable(
@@ -91,48 +98,69 @@ export const products = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [unique('products_store_sku_unique').on(table.storeId, table.sku)],
+  (table) => [
+    // storeId leads this composite unique index, so it also serves plain
+    // "products for store X" lookups — no separate index needed.
+    unique('products_store_sku_unique').on(table.storeId, table.sku),
+  ],
 );
 
-export const services = pgTable('services', {
-  id: serial('id').primaryKey(),
-  storeId: integer('store_id').notNull().references(() => stores.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  category: text('category').notNull().default('General'),
-  price: numeric('price', { precision: 10, scale: 2 }).notNull(),
-  durationMinutes: integer('duration_minutes'),
-  isActive: boolean('is_active').notNull().default(true),
-  imageUrl: text('image_url'),
-  description: text('description'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const services = pgTable(
+  'services',
+  {
+    id: serial('id').primaryKey(),
+    storeId: integer('store_id').notNull().references(() => stores.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    category: text('category').notNull().default('General'),
+    price: numeric('price', { precision: 10, scale: 2 }).notNull(),
+    durationMinutes: integer('duration_minutes'),
+    isActive: boolean('is_active').notNull().default(true),
+    imageUrl: text('image_url'),
+    description: text('description'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('services_store_id_idx').on(table.storeId)],
+);
 
-export const orders = pgTable('orders', {
-  id: serial('id').primaryKey(),
-  storeId: integer('store_id').notNull().references(() => stores.id, { onDelete: 'restrict' }),
-  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
-  // Snapshots of the customer identity at order time, kept even if the user profile changes later.
-  customerName: text('customer_name').notNull(),
-  customerEmail: text('customer_email').notNull(),
-  status: orderStatusEnum('status').notNull().default('pending'),
-  // Always computed server-side from order_items at creation time — never trust a client total.
-  totalAmount: numeric('total_amount', { precision: 10, scale: 2 }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const orders = pgTable(
+  'orders',
+  {
+    id: serial('id').primaryKey(),
+    storeId: integer('store_id').notNull().references(() => stores.id, { onDelete: 'restrict' }),
+    userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+    // Snapshots of the customer identity at order time, kept even if the user profile changes later.
+    customerName: text('customer_name').notNull(),
+    customerEmail: text('customer_email').notNull(),
+    status: orderStatusEnum('status').notNull().default('pending'),
+    // Always computed server-side from order_items at creation time — never trust a client total.
+    totalAmount: numeric('total_amount', { precision: 10, scale: 2 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    // Two independent access patterns: admins list by store, customers list
+    // by their own userId — both need their own index.
+    index('orders_store_id_idx').on(table.storeId),
+    index('orders_user_id_idx').on(table.userId),
+  ],
+);
 
-export const orderItems = pgTable('order_items', {
-  id: serial('id').primaryKey(),
-  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
-  // Nullable: preserves order history if a product is later deleted.
-  productId: integer('product_id').references(() => products.id, { onDelete: 'set null' }),
-  // Snapshot fields so historical orders remain accurate even if the product changes later.
-  productName: text('product_name').notNull(),
-  unitPrice: numeric('unit_price', { precision: 10, scale: 2 }).notNull(),
-  quantity: integer('quantity').notNull(),
-  lineTotal: numeric('line_total', { precision: 10, scale: 2 }).notNull(),
-});
+export const orderItems = pgTable(
+  'order_items',
+  {
+    id: serial('id').primaryKey(),
+    orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+    // Nullable: preserves order history if a product is later deleted.
+    productId: integer('product_id').references(() => products.id, { onDelete: 'set null' }),
+    // Snapshot fields so historical orders remain accurate even if the product changes later.
+    productName: text('product_name').notNull(),
+    unitPrice: numeric('unit_price', { precision: 10, scale: 2 }).notNull(),
+    quantity: integer('quantity').notNull(),
+    lineTotal: numeric('line_total', { precision: 10, scale: 2 }).notNull(),
+  },
+  (table) => [index('order_items_order_id_idx').on(table.orderId)],
+);
 
 // ---- Relations ----
 

@@ -40,14 +40,3 @@ export const requireAuth = asyncHandler(async (req: AuthedRequest, _res: Respons
   req.authUser = user;
   next();
 });
-
-// Attaches req.authUser if a valid token is present; never rejects the request.
-// Used on public endpoints that personalize the response when signed in.
-export const optionalAuth = asyncHandler(async (req: AuthedRequest, _res: Response, next: NextFunction) => {
-  try {
-    req.authUser = await verifyAndLoadUser(req);
-  } catch {
-    req.authUser = undefined;
-  }
-  next();
-});
