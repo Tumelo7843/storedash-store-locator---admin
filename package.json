@@ -14,7 +14,7 @@
     "dev:admin": "npm run dev --workspace=@storedash/admin",
     "build:customer": "npm run build --workspace=@storedash/customer",
     "build:admin": "npm run build --workspace=@storedash/admin",
-    "typecheck": "npm run typecheck --workspace=backend && npm run typecheck --workspace=@storedash/customer && npm run typecheck --workspace=@storedash/admin",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "db:generate": "npm run db:generate --workspace=backend",
     "db:migrate": "npm run db:migrate --workspace=backend",
     "db:push": "npm run db:push --workspace=backend"

@@ -4,8 +4,28 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "echo 'apps/admin not scaffolded yet'",
-    "build": "echo 'apps/admin not scaffolded yet'",
-    "typecheck": "echo 'apps/admin not scaffolded yet'"
+    "dev": "vite --port 5174",
+    "prebuild": "tsc --noEmit",
+    "build": "vite build",
+    "preview": "vite preview --port 5174",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@storedash/shared": "*",
+    "firebase": "^12.17.1",
+    "lucide-react": "^0.546.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "tailwindcss": "^4.1.14",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3"
   }
 }
