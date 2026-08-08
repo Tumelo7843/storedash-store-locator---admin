@@ -9,12 +9,19 @@ declare global {
 }
 
 function buildPool(): Pool {
-  // Cloud SQL Unix socket connections (via the Cloud SQL Auth Proxy, e.g.
-  // .../cloudsql/PROJECT:REGION:INSTANCE) don't use TLS — the proxy handles
-  // encryption. Anything else (Render Postgres, a public Cloud SQL IP) needs
-  // TLS in production.
+  // TLS need is a property of the target database, not of NODE_ENV — a local
+  // dev server can (and often does) point at a hosted database (Neon, Cloud
+  // SQL, Render Postgres) that requires TLS even during development.
+  //
+  // - Cloud SQL Unix socket connections (via the Cloud SQL Auth Proxy, e.g.
+  //   .../cloudsql/PROJECT:REGION:INSTANCE) don't use TLS — the proxy
+  //   handles encryption.
+  // - A plain localhost Postgres (the common local-dev case) doesn't need
+  //   or support TLS.
+  // - Everything else — Neon, a public Cloud SQL IP, Render Postgres — does.
   const isSocketConnection = env.databaseUrl.includes('/cloudsql/');
-  const ssl = !isSocketConnection && env.nodeEnv === 'production' ? { rejectUnauthorized: false } : undefined;
+  const isLocalHost = /:\/\/[^@]*@?(localhost|127\.0\.0\.1)/.test(env.databaseUrl);
+  const ssl = !isSocketConnection && !isLocalHost ? { rejectUnauthorized: false } : undefined;
 
   const pool = new Pool({
     connectionString: env.databaseUrl,
