@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+// Optional form fields (email, imageUrl, ...) round-trip through the admin
+// UI as "" when cleared, not undefined — without this, z.string().email()/
+// .url() reject the empty string and a save with a blank optional field 400s.
+export function optionalString<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess((val) => (val === '' ? undefined : val), schema.optional());
+}
+
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),

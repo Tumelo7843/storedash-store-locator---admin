@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { openingHoursSchema, paginationQuerySchema } from './common.js';
+import { openingHoursSchema, optionalString, paginationQuerySchema } from './common.js';
 
 export const listStoresQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().max(200).optional(),
@@ -27,9 +27,9 @@ export const createStoreSchema = z
     postalCode: z.string().trim().min(1).max(20),
     country: z.string().trim().min(1).max(120).default('United States'),
     phone: z.string().trim().max(40).optional(),
-    email: z.string().trim().email().max(200).optional(),
-    imageUrl: z.string().trim().url().max(2000).optional(),
-    bannerUrl: z.string().trim().url().max(2000).optional(),
+    email: optionalString(z.string().trim().email().max(200)),
+    imageUrl: optionalString(z.string().trim().url().max(2000)),
+    bannerUrl: optionalString(z.string().trim().url().max(2000)),
     status: z.enum(['active', 'inactive']).default('active'),
     deliveryAvailable: z.boolean().default(false),
     pickupAvailable: z.boolean().default(true),

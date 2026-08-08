@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { paginationQuerySchema } from './common.js';
+import { optionalString, paginationQuerySchema } from './common.js';
 
 export const listServicesQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().max(200).optional(),
@@ -14,7 +14,7 @@ export const createServiceSchema = z.object({
   price: z.coerce.number().nonnegative(),
   durationMinutes: z.coerce.number().int().positive().optional(),
   isActive: z.boolean().default(true),
-  imageUrl: z.string().trim().url().max(2000).optional(),
+  imageUrl: optionalString(z.string().trim().url().max(2000)),
   description: z.string().trim().max(4000).optional(),
 });
 
