@@ -1,4 +1,4 @@
-import { ChevronDown, LayoutDashboard, LogOut, Menu, Package, Settings, ShieldCheck, ShoppingBag, Sparkles, Store, Users, X } from 'lucide-react';
+import { ChevronDown, ClipboardList, LayoutDashboard, LogOut, Menu, Package, Settings, ShieldCheck, ShoppingBag, Sparkles, Store, Users, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -87,16 +87,39 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           );
         })}
         {profile?.role === 'super_admin' && (
-          <Link
-            to="/stores/new"
-            onClick={() => setMobileOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              location.pathname === '/stores/new' ? 'bg-primary/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-800/80 hover:text-white'
-            }`}
-          >
-            <Store className="size-5" />
-            Create Store
-          </Link>
+          <>
+            <Link
+              to="/stores/new"
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                location.pathname === '/stores/new' ? 'bg-primary/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-800/80 hover:text-white'
+              }`}
+            >
+              <Store className="size-5" />
+              Create Store
+            </Link>
+            <p className="px-3 pt-3 pb-1 text-[10px] font-bold uppercase text-gray-500 tracking-wide">Platform</p>
+            <Link
+              to="/applications"
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                location.pathname === '/applications' ? 'bg-primary/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-800/80 hover:text-white'
+              }`}
+            >
+              <ClipboardList className="size-5" />
+              Applications
+            </Link>
+            <Link
+              to="/store-owners"
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                location.pathname === '/store-owners' ? 'bg-primary/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-800/80 hover:text-white'
+              }`}
+            >
+              <Users className="size-5" />
+              Store Owners
+            </Link>
+          </>
         )}
       </nav>
 

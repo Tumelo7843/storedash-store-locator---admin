@@ -109,14 +109,14 @@ export function ProductModal({ isOpen, onClose, onSave, editingProduct }: Produc
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field label="Price ($) *">
+            <Field label="Price (R) *">
               <input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required className="input" />
             </Field>
             <Field label="Stock">
               <input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="input" />
             </Field>
             <Field label="Unit">
-              <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="e.g. lb, each" className="input" />
+              <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="e.g. kg, litre, each" className="input" />
             </Field>
           </div>
 

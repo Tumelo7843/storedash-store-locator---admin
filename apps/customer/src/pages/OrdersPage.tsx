@@ -1,3 +1,4 @@
+import { formatZAR } from '@storedash/shared';
 import { LogIn, Receipt } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States';
@@ -13,7 +14,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export function OrdersPage() {
-  const { profile, loading: authLoading, signInWithGoogle } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
   const query = useAsync(() => fetchMyOrders(), [profile?.id]);
 
   if (!authLoading && !profile) {
@@ -24,9 +25,9 @@ export function OrdersPage() {
           title="Sign in to view your orders"
           description="Your order history is tied to your account."
           action={
-            <button onClick={signInWithGoogle} className="mt-3 px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90">
-              Sign in with Google
-            </button>
+            <Link to="/sign-in" className="mt-3 px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 inline-block">
+              Sign in
+            </Link>
           }
         />
       </div>
@@ -61,7 +62,7 @@ export function OrdersPage() {
               <p className="text-xs text-gray-400 mt-0.5">{order.items.length} item{order.items.length === 1 ? '' : 's'}</p>
             </div>
             <div className="text-right flex flex-col items-end gap-1.5">
-              <span className="text-sm font-extrabold text-gray-900">${order.totalAmount.toFixed(2)}</span>
+              <span className="text-sm font-extrabold text-gray-900">{formatZAR(order.totalAmount)}</span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_STYLES[order.status]}`}>{order.status}</span>
             </div>
           </Link>

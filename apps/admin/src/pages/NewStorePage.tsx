@@ -9,7 +9,7 @@ export function NewStorePage() {
   const { profile } = useAuth();
   const { reload, setCurrentStoreId } = useStore();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', category: 'General', address: '', city: '', state: '', postalCode: '', country: 'United States' });
+  const [form, setForm] = useState({ name: '', category: 'General', address: '', city: '', state: '', postalCode: '', country: 'South Africa' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -58,11 +58,11 @@ export function NewStorePage() {
           <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} required className="input" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">State *</label>
-          <input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} required className="input" />
+          <label className="block text-xs font-semibold text-gray-700 mb-1">Province *</label>
+          <input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="Gauteng" required className="input" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">ZIP *</label>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">Postal Code *</label>
           <input value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} required className="input" />
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { formatZAR } from '@storedash/shared';
 import { Clock, Globe, MapPin, Navigation, Package, Phone, Plus, Search, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -169,7 +170,7 @@ export function StorePage() {
                         </div>
                         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                           <span className="text-base font-extrabold text-gray-900">
-                            ${p.price.toFixed(2)}
+                            {formatZAR(p.price)}
                             {p.unit && <span className="text-[10px] text-gray-400 font-normal"> /{p.unit}</span>}
                           </span>
                           <button
@@ -204,7 +205,7 @@ export function StorePage() {
                       <h3 className="text-sm font-bold text-gray-900">{s.name}</h3>
                       {s.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{s.description}</p>}
                       <div className="flex items-center gap-3 mt-2">
-                        <span className="text-sm font-extrabold text-gray-900">${s.price.toFixed(2)}</span>
+                        <span className="text-sm font-extrabold text-gray-900">{formatZAR(s.price)}</span>
                         {s.durationMinutes && <span className="text-xs text-gray-400">{s.durationMinutes} min</span>}
                       </div>
                     </div>

@@ -25,7 +25,7 @@ export const createStoreSchema = z
     city: z.string().trim().min(1).max(120),
     state: z.string().trim().min(1).max(120),
     postalCode: z.string().trim().min(1).max(20),
-    country: z.string().trim().min(1).max(120).default('United States'),
+    country: z.string().trim().min(1).max(120).default('South Africa'),
     phone: z.string().trim().max(40).optional(),
     email: optionalString(z.string().trim().email().max(200)),
     imageUrl: optionalString(z.string().trim().url().max(2000)),

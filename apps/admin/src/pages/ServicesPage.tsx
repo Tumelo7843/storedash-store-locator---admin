@@ -1,4 +1,5 @@
 import type { Service } from '@storedash/shared';
+import { formatZAR } from '@storedash/shared';
 import { Edit2, Search, Sparkles, Trash2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { ServiceModal } from '../components/ServiceModal';
@@ -93,7 +94,7 @@ export function ServicesPage() {
                 </div>
                 {service.description && <p className="text-xs text-gray-500 line-clamp-2">{service.description}</p>}
                 <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-                  <span className="text-sm font-extrabold text-gray-900">${service.price.toFixed(2)}</span>
+                  <span className="text-sm font-extrabold text-gray-900">{formatZAR(service.price)}</span>
                   {service.durationMinutes && <span className="text-xs text-gray-400">{service.durationMinutes} min</span>}
                   {!service.isActive && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Inactive</span>}
                 </div>

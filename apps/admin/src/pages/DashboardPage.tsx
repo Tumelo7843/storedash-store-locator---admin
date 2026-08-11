@@ -1,3 +1,4 @@
+import { formatZAR } from '@storedash/shared';
 import { DollarSign, Package, ShoppingCart, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -28,7 +29,7 @@ export function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard icon={DollarSign} label="Revenue (completed orders)" value={`$${metrics.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} accent="blue" />
+        <MetricCard icon={DollarSign} label="Revenue (completed orders)" value={formatZAR(metrics.totalRevenue)} accent="blue" />
         <MetricCard icon={ShoppingCart} label="Total Orders" value={metrics.ordersCount.toLocaleString()} accent="purple" />
         <MetricCard icon={Package} label="Active Products" value={metrics.activeProductsCount.toLocaleString()} accent="amber" />
         <MetricCard icon={Sparkles} label="Active Services" value={metrics.activeServicesCount.toLocaleString()} accent="emerald" />
@@ -50,7 +51,7 @@ export function DashboardPage() {
                 >
                   {hovered === idx && (
                     <div className="absolute -top-8 bg-gray-900 text-white text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-10">
-                      {day.date}: ${day.sales.toLocaleString()}
+                      {day.date}: {formatZAR(day.sales)}
                     </div>
                   )}
                   <div
@@ -80,7 +81,7 @@ export function DashboardPage() {
                     <p className="text-sm font-semibold text-gray-900">#{order.id} — {order.customerName}</p>
                     <p className="text-[11px] text-gray-400">{new Date(order.createdAt).toLocaleDateString()}</p>
                   </div>
-                  <span className="text-sm font-bold text-emerald-600">${order.totalAmount.toFixed(2)}</span>
+                  <span className="text-sm font-bold text-emerald-600">{formatZAR(order.totalAmount)}</span>
                 </Link>
               ))}
             </div>

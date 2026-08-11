@@ -98,7 +98,7 @@ export function ServiceModal({ isOpen, onClose, onSave, editingService }: Servic
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Price ($) *</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Price (R) *</label>
             <input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required className="input" />
           </div>
 

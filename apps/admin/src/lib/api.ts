@@ -1,4 +1,16 @@
-import type { DashboardMetrics, Order, OrderStatus, Product, Service, Store, StoreStatus, UserProfile } from '@storedash/shared';
+import type {
+  ApplicationStatus,
+  DashboardMetrics,
+  Order,
+  OrderStatus,
+  Product,
+  Service,
+  Store,
+  StoreOwnerApplicationWithApplicant,
+  StoreOwnerSummary,
+  StoreStatus,
+  UserProfile,
+} from '@storedash/shared';
 import { auth } from './firebase';
 import { env } from './env';
 
@@ -118,5 +130,18 @@ export const updateOrderStatus = (id: number, status: OrderStatus) =>
 
 // ---- Dashboard ----
 export const fetchDashboard = (storeId: number) => request<{ data: DashboardMetrics }>(`/api/admin/dashboard/${storeId}`).then((r) => r.data);
+
+// ---- Store-owner applications (super_admin) ----
+export const fetchApplications = (status?: ApplicationStatus) =>
+  request<{ data: StoreOwnerApplicationWithApplicant[] }>(`/api/admin/store-owner-applications${toQuery({ status })}`).then((r) => r.data);
+export const approveApplication = (id: number) =>
+  request<{ data: { storeId: number } }>(`/api/admin/store-owner-applications/${id}/approve`, { method: 'POST' }).then((r) => r.data);
+export const rejectApplication = (id: number, reason: string) =>
+  request(`/api/admin/store-owner-applications/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) });
+
+// ---- Store owners (super_admin) ----
+export const fetchStoreOwners = () => request<{ data: StoreOwnerSummary[] }>('/api/admin/store-owners').then((r) => r.data);
+export const suspendStoreOwner = (userId: number) => request(`/api/admin/store-owners/${userId}/suspend`, { method: 'POST' });
+export const reactivateStoreOwner = (userId: number) => request(`/api/admin/store-owners/${userId}/reactivate`, { method: 'POST' });
 
 export type { StoreStatus };

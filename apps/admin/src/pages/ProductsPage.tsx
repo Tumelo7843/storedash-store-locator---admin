@@ -1,4 +1,5 @@
 import type { Product } from '@storedash/shared';
+import { formatZAR } from '@storedash/shared';
 import { Edit2, Package, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ProductModal } from '../components/ProductModal';
@@ -101,7 +102,7 @@ export function ProductsPage() {
                         </div>
                       </td>
                       <td className="p-4 text-gray-700">{product.category}</td>
-                      <td className="p-4 font-bold text-gray-900">${product.price.toFixed(2)}</td>
+                      <td className="p-4 font-bold text-gray-900">{formatZAR(product.price)}</td>
                       <td className="p-4 text-gray-700">{product.stock}</td>
                       <td className="p-4">
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${AVAILABILITY_STYLES[product.availability]}`}>

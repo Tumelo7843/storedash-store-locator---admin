@@ -8,6 +8,13 @@
       "when": 1786137325065,
       "tag": "0000_flaky_nekra",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786476617281,
+      "tag": "0001_sudden_purple_man",
+      "breakpoints": true
     }
   ]
 }

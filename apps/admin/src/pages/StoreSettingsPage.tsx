@@ -98,7 +98,7 @@ export function StoreSettingsPage() {
           <Field label="City">
             <input value={form.city} onChange={(e) => set('city', e.target.value)} required className="input" />
           </Field>
-          <Field label="State">
+          <Field label="Province">
             <input value={form.state} onChange={(e) => set('state', e.target.value)} required className="input" />
           </Field>
           <Field label="Postal Code">

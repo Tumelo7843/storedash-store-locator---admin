@@ -1,4 +1,5 @@
 import type { OrderStatus } from '@storedash/shared';
+import { formatZAR } from '@storedash/shared';
 import { ShoppingBag } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -68,7 +69,7 @@ export function OrdersPage() {
                   </p>
                 </div>
                 <div className="text-right flex flex-col items-end gap-1.5">
-                  <span className="text-sm font-extrabold text-gray-900">${order.totalAmount.toFixed(2)}</span>
+                  <span className="text-sm font-extrabold text-gray-900">{formatZAR(order.totalAmount)}</span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_STYLES[order.status]}`}>{order.status}</span>
                 </div>
               </Link>

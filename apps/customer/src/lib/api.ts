@@ -1,4 +1,4 @@
-import type { Order, Paginated, Product, Service, Store, UserProfile } from '@storedash/shared';
+import type { Order, Paginated, Product, Service, Store, StoreOwnerApplication, UserProfile } from '@storedash/shared';
 import { auth } from './firebase';
 import { env } from './env';
 
@@ -91,6 +91,38 @@ export async function fetchServices(params: { storeId?: number; search?: string;
 
 export async function syncProfile(): Promise<UserProfile> {
   const { data } = await request<{ data: UserProfile }>('/api/auth/sync', { method: 'POST' }, true);
+  return data;
+}
+
+export async function updateMyProfile(data: { name?: string; phone?: string }): Promise<UserProfile> {
+  const { data: profile } = await request<{ data: UserProfile }>('/api/auth/me', { method: 'PATCH', body: JSON.stringify(data) }, true);
+  return profile;
+}
+
+export interface StoreOwnerApplicationInput {
+  businessName: string;
+  category: string;
+  description?: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  email: string;
+}
+
+export async function submitStoreOwnerApplication(data: StoreOwnerApplicationInput): Promise<StoreOwnerApplication> {
+  const { data: application } = await request<{ data: StoreOwnerApplication }>(
+    '/api/store-owner-applications',
+    { method: 'POST', body: JSON.stringify(data) },
+    true,
+  );
+  return application;
+}
+
+export async function fetchMyApplications(): Promise<StoreOwnerApplication[]> {
+  const { data } = await request<{ data: StoreOwnerApplication[] }>('/api/store-owner-applications/mine', {}, true);
   return data;
 }
 

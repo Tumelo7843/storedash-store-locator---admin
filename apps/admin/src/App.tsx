@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { StoreProvider } from './context/StoreContext';
 import { AccountPage } from './pages/AccountPage';
 import { AdminsPage } from './pages/AdminsPage';
+import { ApplicationsPage } from './pages/ApplicationsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { NewStorePage } from './pages/NewStorePage';
@@ -13,6 +14,7 @@ import { OrderDetailPage } from './pages/OrderDetailPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { ServicesPage } from './pages/ServicesPage';
+import { StoreOwnersPage } from './pages/StoreOwnersPage';
 import { StoreSettingsPage } from './pages/StoreSettingsPage';
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -24,6 +26,15 @@ function RequireAuth({ children }: { children: ReactNode }) {
       <AdminLayout>{children}</AdminLayout>
     </StoreProvider>
   );
+}
+
+// Frontend gate for UX only (hides the nav item / redirects) — the backend
+// independently rejects every request on these pages' endpoints with 403 for
+// anyone whose role isn't super_admin, regardless of what this component does.
+function RequireSuperAdmin({ children }: { children: ReactNode }) {
+  const { profile } = useAuth();
+  if (profile?.role !== 'super_admin') return <Navigate to="/" replace />;
+  return <>{children}</>;
 }
 
 function AppRoutes() {
@@ -38,6 +49,26 @@ function AppRoutes() {
       <Route path="/store-settings" element={<RequireAuth><StoreSettingsPage /></RequireAuth>} />
       <Route path="/admins" element={<RequireAuth><AdminsPage /></RequireAuth>} />
       <Route path="/stores/new" element={<RequireAuth><NewStorePage /></RequireAuth>} />
+      <Route
+        path="/applications"
+        element={
+          <RequireAuth>
+            <RequireSuperAdmin>
+              <ApplicationsPage />
+            </RequireSuperAdmin>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/store-owners"
+        element={
+          <RequireAuth>
+            <RequireSuperAdmin>
+              <StoreOwnersPage />
+            </RequireSuperAdmin>
+          </RequireAuth>
+        }
+      />
       <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
     </Routes>
   );

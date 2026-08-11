@@ -25,7 +25,7 @@ async function verifyAndLoadUser(req: AuthedRequest): Promise<DbUser | undefined
   // Profile fields (email/name) are refreshed explicitly via /api/auth/sync.
   const existing = await findUserByUid(decoded.uid);
   if (existing) return existing;
-  return getOrCreateUser(decoded.uid, decoded.email || '', decoded.name);
+  return getOrCreateUser(decoded.uid, decoded.email || '', decoded.name, decoded.phone_number);
 }
 
 // Attaches req.authUser from a verified Firebase ID token, or rejects the request.
@@ -37,6 +37,9 @@ export const requireAuth = asyncHandler(async (req: AuthedRequest, _res: Respons
     throw AppError.unauthorized('Invalid or expired authentication token');
   }
   if (!user) throw AppError.unauthorized('Missing authentication token');
+  // A super_admin-suspended account is blocked everywhere, independent of role
+  // or store_admins rows — checked on every request, not just admin routes.
+  if (user.suspended) throw AppError.forbidden('This account has been suspended. Contact the platform administrator.');
   req.authUser = user;
   next();
 });

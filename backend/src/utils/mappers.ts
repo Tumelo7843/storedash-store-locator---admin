@@ -1,11 +1,22 @@
-import type { OpeningHours, Order, OrderItem, Product, ProductAvailability, Service, Store } from '@storedash/shared';
-import type { orderItems, orders, products, services, stores } from '../db/schema.js';
+import type {
+  OpeningHours,
+  Order,
+  OrderItem,
+  Product,
+  ProductAvailability,
+  Service,
+  Store,
+  StoreOwnerApplication,
+  StoreOwnerApplicationWithApplicant,
+} from '@storedash/shared';
+import type { orderItems, orders, products, services, storeOwnerApplications, stores } from '../db/schema.js';
 
 type StoreRow = typeof stores.$inferSelect;
 type ProductRow = typeof products.$inferSelect;
 type ServiceRow = typeof services.$inferSelect;
 type OrderRow = typeof orders.$inferSelect;
 type OrderItemRow = typeof orderItems.$inferSelect;
+type ApplicationRow = typeof storeOwnerApplications.$inferSelect;
 
 const numOrNull = (v: string | null): number | null => (v === null ? null : Number(v));
 
@@ -87,6 +98,36 @@ export function toOrderItemDTO(row: OrderItemRow): OrderItem {
     quantity: row.quantity,
     lineTotal: Number(row.lineTotal),
   };
+}
+
+export function toApplicationDTO(row: ApplicationRow): StoreOwnerApplication {
+  return {
+    id: row.id,
+    userId: row.userId,
+    status: row.status,
+    businessName: row.businessName,
+    category: row.category,
+    description: row.description,
+    address: row.address,
+    city: row.city,
+    state: row.state,
+    postalCode: row.postalCode,
+    country: row.country,
+    phone: row.phone,
+    email: row.email,
+    storeId: row.storeId,
+    reviewedBy: row.reviewedBy,
+    reviewedAt: row.reviewedAt ? row.reviewedAt.toISOString() : null,
+    rejectionReason: row.rejectionReason,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toApplicationWithApplicantDTO(
+  row: ApplicationRow & { applicantEmail: string; applicantName: string | null },
+): StoreOwnerApplicationWithApplicant {
+  return { ...toApplicationDTO(row), applicantEmail: row.applicantEmail, applicantName: row.applicantName };
 }
 
 export function toOrderDTO(row: OrderRow, items: OrderItemRow[]): Order {

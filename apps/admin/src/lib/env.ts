@@ -5,6 +5,9 @@ function required(name: string, value: string | undefined): string {
 
 export const env = {
   apiUrl: required('VITE_API_URL', import.meta.env.VITE_API_URL),
+  // Base URL of the customer app, for the "Sign up as a customer / request
+  // store owner access" link shown to a signed-in-but-unauthorized user.
+  customerUrl: import.meta.env.VITE_CUSTOMER_URL || '',
   firebase: {
     apiKey: required('VITE_FIREBASE_API_KEY', import.meta.env.VITE_FIREBASE_API_KEY),
     authDomain: required('VITE_FIREBASE_AUTH_DOMAIN', import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),

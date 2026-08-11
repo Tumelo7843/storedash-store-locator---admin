@@ -1,18 +1,27 @@
-import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut, type User } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  type User,
+} from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { auth, googleAuthProvider } from '../lib/firebase';
+import { auth } from '../lib/firebase';
 import { getMe, syncProfile, type ManagedProfile } from '../lib/api';
 
 interface AuthContextValue {
   firebaseUser: User | null;
   profile: ManagedProfile | null;
   loading: boolean;
-  // A signed-in user who manages no stores and isn't a super_admin — the
-  // account exists (e.g. they've ordered as a customer elsewhere) but has no
-  // reason to be in this app. The backend would reject every admin call for
-  // them anyway; this just avoids showing an empty, broken dashboard.
+  // A signed-in user who manages no stores, isn't a super_admin, or has been
+  // suspended — the account exists (e.g. they've ordered as a customer
+  // elsewhere) but has no reason to be in this app. The backend would reject
+  // every admin call for them anyway; this just avoids showing an empty,
+  // broken dashboard. Suspension is enforced server-side regardless (every
+  // API call 403s via requireAuth) — this is UX only.
   isAuthorized: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -45,18 +54,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const signInWithGoogle = async () => {
-    await signInWithPopup(auth, googleAuthProvider);
+  const signInWithEmail = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const sendPasswordReset = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
   };
 
   const signOut = async () => {
     await firebaseSignOut(auth);
   };
 
-  const isAuthorized = Boolean(profile && profile.role !== 'customer');
+  const isAuthorized = Boolean(profile && profile.role !== 'customer' && !profile.suspended);
 
   return (
-    <AuthContext.Provider value={{ firebaseUser, profile, loading, isAuthorized, signInWithGoogle, signOut, refreshProfile: loadProfile }}>
+    <AuthContext.Provider
+      value={{ firebaseUser, profile, loading, isAuthorized, signInWithEmail, sendPasswordReset, signOut, refreshProfile: loadProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );

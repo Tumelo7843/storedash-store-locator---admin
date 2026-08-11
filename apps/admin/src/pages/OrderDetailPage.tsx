@@ -1,4 +1,5 @@
 import type { OrderStatus } from '@storedash/shared';
+import { formatZAR } from '@storedash/shared';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ErrorState, Spinner } from '../components/ui/States';
@@ -59,15 +60,15 @@ export function OrderDetailPage() {
             <div>
               <p className="text-sm font-bold text-gray-900">{item.productName}</p>
               <p className="text-xs text-gray-500">
-                {item.quantity} × ${item.unitPrice.toFixed(2)}
+                {item.quantity} × {formatZAR(item.unitPrice)}
               </p>
             </div>
-            <span className="text-sm font-bold text-gray-900">${item.lineTotal.toFixed(2)}</span>
+            <span className="text-sm font-bold text-gray-900">{formatZAR(item.lineTotal)}</span>
           </div>
         ))}
         <div className="p-4 flex items-center justify-between bg-gray-50">
           <span className="text-sm font-semibold text-gray-600">Total</span>
-          <span className="text-lg font-extrabold text-gray-900">${order.totalAmount.toFixed(2)}</span>
+          <span className="text-lg font-extrabold text-gray-900">{formatZAR(order.totalAmount)}</span>
         </div>
       </div>
 

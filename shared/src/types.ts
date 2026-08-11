@@ -6,6 +6,7 @@ export type UserRole = 'customer' | 'store_admin' | 'super_admin';
 export type StoreStatus = 'active' | 'inactive';
 export type ProductAvailability = 'in_stock' | 'low_stock' | 'out_of_stock';
 export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
+export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
 
 export interface DayHours {
   open: string; // "HH:MM" 24h
@@ -28,9 +29,53 @@ export interface UserProfile {
   uid: string;
   email: string;
   name: string | null;
+  phone: string | null;
   avatarUrl: string | null;
   role: UserRole;
+  suspended: boolean;
   createdAt: string;
+}
+
+export interface StoreOwnerApplication {
+  id: number;
+  userId: number;
+  status: ApplicationStatus;
+  businessName: string;
+  category: string;
+  description: string | null;
+  address: string;
+  city: string;
+  state: string; // Province
+  postalCode: string;
+  country: string;
+  phone: string;
+  email: string;
+  storeId: number | null;
+  reviewedBy: number | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Application row plus the applicant's identity, for the Super Admin review list.
+export interface StoreOwnerApplicationWithApplicant extends StoreOwnerApplication {
+  applicantEmail: string;
+  applicantName: string | null;
+}
+
+// A store_admin/super_admin user plus the stores they manage, for the Super
+// Admin "Store Owners" management page.
+export interface StoreOwnerSummary {
+  id: number;
+  uid: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  role: UserRole;
+  suspended: boolean;
+  createdAt: string;
+  managedStores: Array<{ id: number; name: string }>;
 }
 
 export interface Store {

@@ -1,3 +1,4 @@
+import { formatZAR } from '@storedash/shared';
 import { CheckCircle2 } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { ErrorState, Spinner } from '../components/ui/States';
@@ -57,17 +58,17 @@ export function OrderDetailPage() {
             <div>
               <p className="text-sm font-bold text-gray-900">{item.productName}</p>
               <p className="text-xs text-gray-500">
-                {item.quantity} × ${item.unitPrice.toFixed(2)}
+                {item.quantity} × {formatZAR(item.unitPrice)}
               </p>
             </div>
-            <span className="text-sm font-bold text-gray-900">${item.lineTotal.toFixed(2)}</span>
+            <span className="text-sm font-bold text-gray-900">{formatZAR(item.lineTotal)}</span>
           </div>
         ))}
       </div>
 
       <div className="bg-surface border border-gray-200 rounded-2xl p-4 flex items-center justify-between">
         <span className="text-sm font-semibold text-gray-600">Total</span>
-        <span className="text-lg font-extrabold text-gray-900">${order.totalAmount.toFixed(2)}</span>
+        <span className="text-lg font-extrabold text-gray-900">{formatZAR(order.totalAmount)}</span>
       </div>
 
       <Link to="/orders" className="text-xs font-bold text-accent hover:underline self-start">

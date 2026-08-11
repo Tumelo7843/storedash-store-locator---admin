@@ -1,3 +1,4 @@
+import { formatZAR } from '@storedash/shared';
 import { CheckCircle2, LogIn, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -8,7 +9,7 @@ import { ApiError, placeOrder } from '../lib/api';
 
 export function CartPage() {
   const { storeId, lines, updateQuantity, removeItem, clear, totalCount, totalPrice } = useCart();
-  const { profile, signInWithGoogle } = useAuth();
+  const { profile } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -58,7 +59,7 @@ export function CartPage() {
             {product.imageUrl && <img src={product.imageUrl} alt={product.name} className="size-14 rounded-lg object-cover bg-gray-100" />}
             <div className="flex-1">
               <h4 className="text-sm font-bold text-gray-900">{product.name}</h4>
-              <span className="text-xs text-gray-500">${product.price.toFixed(2)} each</span>
+              <span className="text-xs text-gray-500">{formatZAR(product.price)} each</span>
             </div>
             <div className="flex items-center gap-2 border border-gray-200 rounded-lg p-1 bg-gray-50">
               <button onClick={() => updateQuantity(product.id, quantity - 1)} className="p-1 rounded-md hover:bg-surface text-gray-600 transition-colors">
@@ -79,7 +80,7 @@ export function CartPage() {
       <div className="bg-surface border border-gray-200 rounded-2xl p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600 font-semibold">{totalCount} item{totalCount === 1 ? '' : 's'}</span>
-          <span className="text-xl font-extrabold text-gray-900">${totalPrice.toFixed(2)}</span>
+          <span className="text-xl font-extrabold text-gray-900">{formatZAR(totalPrice)}</span>
         </div>
 
         {error && <p className="text-xs font-semibold text-rose-400">{error}</p>}
@@ -94,12 +95,12 @@ export function CartPage() {
             {submitting ? 'Placing order…' : 'Place Order'}
           </button>
         ) : (
-          <button
-            onClick={signInWithGoogle}
+          <Link
+            to="/sign-in"
             className="w-full py-3 rounded-xl border border-gray-300 hover:bg-gray-100 text-gray-900 font-bold text-sm flex items-center justify-center gap-2 transition-colors"
           >
             <LogIn className="size-4" /> Sign in to check out
-          </button>
+          </Link>
         )}
       </div>
     </div>

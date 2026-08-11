@@ -16,8 +16,65 @@ plain TypeScript types.
   and authorization for every write; the frontends have no special privileges the API doesn't
   independently verify.
 - **Database**: PostgreSQL (Cloud SQL in production), accessed through Drizzle ORM.
-- **Auth**: Firebase Authentication (Google Sign-In) for identity; a `users.role` column plus a
-  `store_admins` join table for authorization (see §12–13).
+- **Auth**: Firebase Authentication — email/password, phone (SMS), and Google — for identity; a
+  `users.role` column plus a `store_admins` join table for authorization (see §12–13). Becoming a
+  store owner is a self-service **request** reviewed by a `super_admin`, not automatic — see §23.
+- **Currency/units**: South African Rand (ZAR, formatted `R 1,234.56`) and South African address
+  conventions (province, postal code) throughout — see §24.
+
+## Customer & admin authentication, and the store-owner approval workflow — 2026-08-11
+
+Full sign-up/sign-in for both apps, plus a Super-Admin-gated path for a customer to become a store
+owner, were built out. **Nothing above this section describing the pre-existing architecture
+(backend, database, Firebase project, deployment) changed structurally** — this added new tables,
+routes, and pages on top of it. Read §12–15 and the new §23–25 below for the complete, current
+picture; this entry is a summary of what changed and why.
+
+**how it works:**
+
+- **Customer app** (`apps/customer`): dedicated `/sign-up`, `/sign-in`, `/forgot-password`, and
+  `/become-a-store-owner` pages (previously the only option was a single "Sign in with Google"
+  button on the Account page). Sign-up collects name, email, optional phone, and a password
+  (minimum 7 characters, must mix letters and numbers, live strength meter). Sign-in offers email
+  password, phone (SMS one-time code via `RecaptchaVerifier` + `signInWithPhoneNumber`), and Google,
+  switchable by tab. Every Firebase error code is mapped to a plain-English message
+  (`apps/customer/src/lib/authErrors.ts`) instead of surfacing `Firebase: Error (auth/xyz).`
+  Sessions persist across browser restarts (`browserLocalPersistence`, set explicitly in
+  `lib/firebase.ts`). The sign-in page carries a clear **"Store owner or admin? Sign in here"** link
+  to the admin app (§23).
+- **Admin app** (`apps/admin`): `LoginPage` rewritten to **email + password only** — no Google
+  button — per the requirement that admin/store-owner authentication must use email+password. A
+  signed-in user who isn't an approved, non-suspended store owner sees a clear "no access" screen
+  with a link back to the customer app's store-owner request form, rather than a broken dashboard.
+  Two new Super-Admin-only pages: **Applications** (`/applications`, approve/reject with a required
+  rejection reason) and **Store Owners** (`/store-owners`, suspend/reactivate any store owner).
+- **Backend**: a new `store_owner_applications` table and its full CRUD/review API (§23), a
+  `users.suspended` flag enforced in `requireAuth` on every request platform-wide (§13), a
+  `users.phone` column, and a narrow `PATCH /api/auth/me` that lets a user update only their own
+  name/phone — never role or suspended (§12).
+- **Security model unchanged, extended**: the pre-existing rule that authorization is enforced
+  server-side, never trusted from the client, now also covers the approval workflow — approving an
+  application is the *only* code path (besides direct DB access) that can turn a `customer` into a
+  `store_admin`, and it always creates the store from the application's own stored data, never from
+  request-body input (§23).
+- **Currency/units**: every price/revenue display converted from a hardcoded `$` to
+  `formatZAR()` (new `@storedash/shared` export, `Intl.NumberFormat('en-ZA', { style: 'currency',
+  currency: 'ZAR' })`); "State"/"ZIP" labels and the `United States` default became "Province"/
+  "Postal Code" and `South Africa` (§24).
+
+**Verified this pass** (real Firebase project + live Postgres database, not mocked — see §25 for
+the full list): sign-up, sign-in, wrong-password rejection, the `PATCH /api/auth/me` role-tampering
+attempt (confirmed the field is silently stripped by validation, not just ignored by convention),
+the full application → approve → store-created → role-upgraded → store-scoped-access chain, the
+full application → reject → applicant-stays-`customer` chain, duplicate-pending-application
+rejection, suspend → every endpoint 403s → reactivate → access restored, a `super_admin` blocked
+from suspending themselves, and cross-store isolation (a newly-approved owner denied write access
+to a store they don't manage). This pass found and fixed one real bug: `PATCH /api/auth/me` with no
+recognized fields crashed with a 500 (Drizzle's "no values to set") instead of a clean 400 — fixed
+in `backend/src/validators/auth.validator.ts` with a `.refine()` requiring at least one field.
+**Not verified in a real browser** (this environment has no browser-automation tooling installed):
+the actual Google OAuth popup and SMS delivery for phone sign-in — both call real external services
+that can't be driven headlessly here. Do this manually before shipping (§25).
 
 ## Customer landing page redesign — 2026-08-11
 
@@ -158,7 +215,8 @@ since each app should be free to evolve its own API surface without touching the
 
 - Node.js 20+ and npm 10+
 - A PostgreSQL database (Cloud SQL for production; any local/hosted Postgres for development)
-- A Firebase project with Authentication enabled (Google provider)
+- A Firebase project with Authentication enabled — **Email/Password**, **Phone**, and **Google**
+  providers (§10)
 
 ## 5. Environment variables
 
@@ -189,6 +247,8 @@ Every variable is documented in [.env.example](.env.example). Summary:
 | `VITE_FIREBASE_STORAGE_BUCKET` | no | |
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | no | |
 | `VITE_FIREBASE_APP_ID` | yes | |
+| `VITE_ADMIN_URL` | `apps/customer/.env` only, no | Admin app's base URL — powers the "Admin sign in" link on the customer sign-in page (§23). Link is hidden if unset. |
+| `VITE_CUSTOMER_URL` | `apps/admin/.env` only, no | Customer app's base URL — powers the "Sign up as a customer" / "Request store-owner access" links on the admin login/no-access screens (§23). Link is hidden if unset. |
 
 **Never put in a frontend `.env`:** `DATABASE_URL`, `FIREBASE_SERVICE_ACCOUNT_BASE64`,
 `SUPABASE_SERVICE_ROLE_KEY`, or any database credential. Note that neither frontend needs any
@@ -330,9 +390,19 @@ middleware before it reaches any route handler.
 ## 10. Firebase setup
 
 1. Create a Firebase project (or use an existing one) at [console.firebase.google.com](https://console.firebase.google.com).
-2. Authentication > Sign-in method > enable **Google**.
+2. Authentication > Sign-in method > enable all three providers this app uses:
+   - **Email/Password** — used by both the customer app's email sign-up/sign-in and, exclusively,
+     the admin app's login (§23).
+   - **Phone** — used by the customer app's phone sign-in/sign-up (§23). No extra provider config
+     needed for production; for local development, Authentication > Sign-in method > Phone >
+     **Phone numbers for testing** lets you add a fake number (e.g. `+27821234567`) with a fixed
+     code (e.g. `123456`) so you can test the flow without receiving a real SMS.
+   - **Google** — used by the customer app only (the admin app deliberately does not offer it — see
+     §23 for why, and how a Google-only account can still get admin access).
 3. Authentication > Settings > **Authorized domains** — add your Vercel domains (both customer and
-   admin) and your local dev origins if needed (`localhost` is included by default).
+   admin) and your local dev origins if needed (`localhost` is included by default). Phone auth's
+   invisible reCAPTCHA also depends on this list — a domain missing here will fail phone sign-in
+   with an `auth/captcha-check-failed`-style error even though it works locally.
 4. Project Settings > General > Your apps > add a Web app (or reuse one) to get the
    `VITE_FIREBASE_*` values for §5. The same Firebase project/config is used by both frontends.
 5. Project Settings > Service Accounts > **Generate new private key** → downloads a JSON file.
@@ -377,28 +447,46 @@ middleware before it reaches any route handler.
 ## 12. Authentication vs. authorization
 
 **Authentication** (Firebase): every protected request carries `Authorization: Bearer <Firebase ID
-token>`. `backend/src/middleware/auth.ts`'s `requireAuth` verifies it against Firebase using the
-Admin SDK and loads (or lazily creates) the corresponding row in the `users` table. If the token is
-missing, expired, or invalid, the request is rejected with 401 before any handler runs.
+token>`, regardless of whether the user signed in with email/password, phone, or Google — all three
+produce the same kind of ID token. `backend/src/middleware/auth.ts`'s `requireAuth` verifies it
+against Firebase using the Admin SDK and loads (or lazily creates) the corresponding row in the
+`users` table. If the token is missing, expired, or invalid, the request is rejected with 401 before
+any handler runs. If the corresponding user row has `suspended = true`, the request is rejected with
+403 at this same layer — suspension is checked before any role/store logic even runs, so a
+suspended `super_admin` (self-suspension is blocked, see §23, but a *different* super_admin could
+still suspend one) loses access exactly like anyone else.
 
 **Authorization** (this app's own logic, not Firebase's): a verified identity does not imply any
-permission. Three roles exist on `users.role`: `customer` (default for every new sign-in),
-`store_admin`, and `super_admin`. Role alone still isn't enough to act on a specific store — see
-§13.
+permission. Three roles exist on `users.role`: `customer` (default for every new sign-in — see §23
+for the *only* path that changes this), `store_admin`, and `super_admin`. Role alone still isn't
+enough to act on a specific store — see §13.
 
 Every admin-write route is protected by one of two middlewares
 (`backend/src/middleware/authorize.ts`):
 
 - `requireRole(...roles)` — checks `req.authUser.role` is in the allowed list. Used for
-  platform-wide actions like store creation (`super_admin` only).
+  platform-wide actions like store creation and the entire Super Admin API (§23).
 - `requireStoreAccess(resolveStoreId)` — resolves the **real** store ID for the resource being
   acted on directly from the database (e.g. looks up a product's `storeId` column, not whatever a
   client claims), then checks the caller manages that store. This is what makes
   `PUT /api/admin/products/999` safe even if the request body contains a different `storeId`.
 
+**A user can never write their own role, suspended flag, or store assignments.** The only
+self-service profile endpoint, `PATCH /api/auth/me`, is validated against a schema
+(`backend/src/validators/auth.validator.ts`) that accepts *only* `name` and `phone` — any other
+field in the request body (`role`, `suspended`, anything) is silently stripped by Zod before it ever
+reaches `updateOwnProfile` in `backend/src/services/users.service.ts`, which only ever writes those
+same two columns. This was confirmed by directly `PATCH`ing `{"role":"super_admin"}` against a real
+`customer` account during this work — the field was dropped, the account's role never changed (see
+§25). The only two places that ever write `users.role` or `users.suspended` are
+`storeOwnerApplications.service.ts` (role, only via an approved application, §23) and
+`storeOwners.service.ts` (suspended, `requireRole('super_admin')`-gated, §23) — both server-side,
+both independent of any client-supplied role/suspended value.
+
 The frontends also gate their own UI (e.g. the admin app's login screen refuses a signed-in
-non-admin), but that's a UX convenience, not the security boundary — every one of these checks is
-re-verified server-side regardless of what the frontend does or doesn't show.
+non-admin or suspended account, and hides `/applications`/`/store-owners` from non-super-admins),
+but that's a UX convenience, not the security boundary — every one of these checks is re-verified
+server-side regardless of what the frontend does or doesn't show.
 
 ## 13. Store data isolation
 
@@ -422,11 +510,20 @@ bypass because the underlying query never included them.
 
 ## 14. How to add a new store
 
-Only a `super_admin` can create a store (`POST /api/admin/stores`, gated by
-`requireRole('super_admin')` in `backend/src/routes/stores.routes.ts`) — creating a store
-establishes ownership, so it isn't self-service for a plain `store_admin`. In the admin app, a
-`super_admin` sees a **Create Store** item in the sidebar (`apps/admin/src/pages/NewStorePage.tsx`).
-The creator is automatically added as the first admin of the new store.
+Two paths create a store, and both end up in exactly the same place — a row in `stores` plus a
+`store_admins` link — because the second path is implemented as a super_admin acting through the
+same primitives, not a separate parallel system:
+
+1. **Self-service (typical path)**: a customer requests store-owner access with their business
+   details, a `super_admin` approves it, and approval creates the store automatically from the
+   application's data. This is the flow most real store owners go through — see §23.
+2. **Direct creation (super_admin only)**: `POST /api/admin/stores`, gated by
+   `requireRole('super_admin')` in `backend/src/routes/stores.routes.ts` — creating a store directly
+   establishes ownership, so it isn't self-service for a plain `store_admin`. In the admin app, a
+   `super_admin` sees a **Create Store** item in the sidebar (`apps/admin/src/pages/NewStorePage.tsx`).
+   The creator is automatically added as the first admin of the new store. Useful for a super_admin
+   onboarding a store owner directly (e.g. over email/phone) without making them fill out the
+   in-app application form.
 
 ## 15. How to create an admin for a store
 
@@ -519,6 +616,20 @@ single heaviest dependency in the app and only needed on the store-discovery pag
   match exactly.
 - **A new store doesn't show up on the customer map**: it needs `lat`/`lng` set (Store Settings in
   the admin app) and `status: active` — see §17.
+- **"This account has been suspended" (403) even though the account looks fine**: `users.suspended`
+  is `true` for that row — a `super_admin` suspended it (§23). Reactivate from the admin app's
+  Store Owners page, or `POST /api/admin/store-owners/:id/reactivate` directly.
+- **Phone sign-in fails with a reCAPTCHA/`auth/captcha-check-failed` error**: the current origin
+  isn't in Firebase's Authorized domains list (§10) — this includes `localhost` during local dev,
+  which is included by default, but a custom local port or a new Vercel preview domain is not.
+- **"You already have a pending store-owner application"** (409 on `POST
+  /api/store-owner-applications`): expected — one user can only have one *pending* application at a
+  time (`storeOwnerApplications.service.ts`). Wait for a super_admin to approve/reject it, or check
+  `GET /api/store-owner-applications/mine` for its current status.
+- **Admin app says "No account found with this email"**: the admin app's login is email+password
+  only by design (§23) — if that person signed up via Google on the customer app and never set a
+  password, "Forgot password?" on the admin login page will email them a link to set one (Firebase
+  treats this as adding a credential to their existing account, not creating a new one).
 
 ## 19. Production checklist
 
@@ -526,17 +637,21 @@ Before pointing real users at this:
 
 - [ ] `DATABASE_URL` points at a real, backed-up Cloud SQL instance (not a dev database)
 - [ ] `backend/drizzle` migrations have been applied to that database (`npm run db:migrate`)
-- [ ] Firebase Authorized domains list only contains your real production domains
+- [ ] Firebase Authentication has **Email/Password**, **Phone**, and **Google** all enabled (§10)
+- [ ] Firebase Authorized domains list only contains your real production domains (needed for
+      Google popup *and* phone reCAPTCHA — §10)
 - [ ] Google Cloud Console API key restrictions are set on the Firebase Web API key (HTTP
       referrers limited to your real domains)
 - [ ] `ALLOWED_ORIGINS` on Render lists only your real Vercel domains (no `localhost`)
 - [ ] `FIREBASE_SERVICE_ACCOUNT_BASE64` is set via Render's environment variable dashboard, never
       committed to git
-- [ ] At least one `super_admin` user exists — promote a user's role directly in the database once
-      (there's no bootstrap UI for the very first super_admin, by design: it's a one-time manual
-      step, not a self-service flow)
+- [ ] `VITE_ADMIN_URL` (customer app) and `VITE_CUSTOMER_URL` (admin app) point at each other's real
+      production domains, not `localhost` (§5, §23)
+- [ ] At least one `super_admin` user exists — see §23 "Creating the first Super Admin" (there's no
+      bootstrap UI for the very first one, by design: it's a one-time manual step, not a
+      self-service flow)
 - [ ] Custom domains configured and `VITE_API_URL` / `ALLOWED_ORIGINS` updated to match (§9)
-- [ ] Ran the manual test flows and security scenarios in §20 against the real deployment
+- [ ] Ran the manual test flows and security scenarios in §20 and §25 against the real deployment
 
 ## 20. Testing
 
@@ -703,3 +818,219 @@ both variables are present, so the rest of the app keeps working even before thi
    just an `<img src>` pointed at the public Supabase URL, no auth or SDK involved on that side.
 6. Paste the same image URL directly into a browser tab to confirm it loads without being signed
    in, verifying the bucket's public-read policy.
+
+## 23. Customer & admin authentication, and the store-owner approval workflow
+
+This section is the complete reference for everything summarized in the changelog entry near the
+top of this file. Read §12–13 first for the general auth/authorization model this builds on.
+
+### Customer app: sign-up, sign-in, sign-out
+
+`apps/customer/src/context/AuthContext.tsx` wraps the Firebase Web SDK and exposes
+`signUpWithEmail`, `signInWithEmail`, `signInWithGoogle`, `sendPasswordReset`, and `signOut`. Phone
+sign-in is handled directly in `apps/customer/src/pages/SignInPage.tsx` (it needs a live DOM node
+for Firebase's invisible reCAPTCHA, which doesn't fit the context's shape) but uses the same shared
+`auth` instance, so `onAuthStateChanged` in the context picks up a successful phone sign-in exactly
+like any other.
+
+- **Sign up** (`/sign-up`): name, email, optional phone, password + confirm. Password must be at
+  least 7 characters and include both a letter and a number
+  (`apps/customer/src/lib/validation.ts`'s `passwordError`), enforced client-side before the
+  Firebase call *and* backstopped by Firebase's own server-side password policy. A live strength
+  meter (weak/medium/strong) gives feedback as you type. On success: `updateProfile` sets the
+  Firebase display name, `POST /api/auth/sync` provisions the `users` row, then
+  `PATCH /api/auth/me` saves the phone number (Firebase's own profile has no phone field unless
+  phone *is* the sign-in method — see below), and a verification email is sent
+  (`sendEmailVerification`, best-effort — sign-up doesn't block on it).
+- **Sign in** (`/sign-in`): a two-tab toggle between **Email** (`signInWithEmailAndPassword`) and
+  **Phone**. Phone sign-in sends a 6-digit SMS code (`signInWithPhoneNumber` +
+  `RecaptchaVerifier` in invisible mode) and confirms it (`confirmationResult.confirm(code)`) — this
+  is also how a *new* phone number signs up, since Firebase phone auth doesn't distinguish sign-up
+  from sign-in; there's no separate phone sign-up form. Below both tabs, a **Google** button
+  (`signInWithPopup`). A **"Store owner or admin? Sign in here"** link (only rendered when
+  `VITE_ADMIN_URL` is set, §5) sends store owners to the admin app instead.
+- **Forgot password** (`/forgot-password`): `sendPasswordResetEmail`. The confirmation message is
+  deliberately generic ("if an account exists for this email…") regardless of whether the address is
+  actually registered — this project's Firebase settings have email-enumeration protection enabled,
+  and the UI copy matches that regardless, so it never leaks which emails have accounts.
+- **Errors**: every Firebase Auth error code is translated to a plain-English message by
+  `apps/customer/src/lib/authErrors.ts` (`authErrorMessage`) — wrong password, email already in use,
+  weak password, invalid phone number, expired/incorrect SMS code, too many attempts, network
+  errors, etc. all get a specific message instead of Firebase's raw `Firebase: Error (auth/xyz).`
+- **Persistence**: `browserLocalPersistence` is set explicitly in `apps/customer/src/lib/firebase.ts`
+  (and the admin equivalent) — a signed-in session survives closing and reopening the browser, not
+  just a page refresh.
+- **Sign out**: the Account page (`/account`) has a **Sign out** button for a signed-in user, and
+  shows sign-in/sign-up CTAs otherwise.
+
+### Admin app: email + password only
+
+`apps/admin/src/context/AuthContext.tsx` and `LoginPage.tsx` intentionally expose only
+`signInWithEmail` and `sendPasswordReset` — **no Google button** — because the requirement is that
+admin/store-owner authentication must use email+password. This does *not* mean a store owner's
+Firebase account has to have been created via email/password: Firebase lets you add an
+email/password credential to an existing Google-created account with the same email by simply
+requesting a password reset for it (the "Forgot password?" link on the admin login page does this
+automatically — Firebase treats it as adding a sign-in method, not creating a new account). So the
+practical flow for a Google-only customer who gets approved as a store owner is: they get approved
+→ they go to the admin login page → click "Forgot password?" → set a password by email → sign in
+with it from then on.
+
+A signed-in user whose role is `customer`, or whose account is `suspended`, sees a dedicated
+"no access"/"suspended" screen (`NoAccessCard` in `LoginPage.tsx`) instead of a broken dashboard,
+with a link to the customer app's `/become-a-store-owner` page (via `VITE_CUSTOMER_URL`, §5) when
+that's the relevant next step.
+
+### The store-owner application: schema and lifecycle
+
+New table, `store_owner_applications` (`backend/src/db/schema.ts`, migration
+`backend/drizzle/0001_sudden_purple_man.sql`):
+
+```
+users ----< store_owner_applications >---- stores (nullable, set on approval)
+                                     \---- users (reviewedBy, nullable)
+```
+
+Columns mirror what §14's direct-store-creation path collects (business name, category,
+description, address, city, province, postal code, country, phone, email) plus `status`
+(`pending`/`approved`/`rejected`, enum `application_status`), `storeId` (set only once approved),
+`reviewedBy`/`reviewedAt`, and `rejectionReason`. One user can only have one **pending** application
+at a time — enforced in `storeOwnerApplications.service.ts`'s `createApplication` (a 409 on a second
+attempt), not a database constraint, so a user *can* have multiple historical rows (e.g. a rejected
+one followed by a new pending one after addressing the feedback).
+
+**Customer-facing** (`apps/customer/src/pages/BecomeStoreOwnerPage.tsx`, any authenticated user):
+
+| Method | Path | What |
+|---|---|---|
+| `POST` | `/api/store-owner-applications` | Submit a new application (409 if one is already pending) |
+| `GET` | `/api/store-owner-applications/mine` | This user's own applications, newest first |
+
+**Super-Admin-only** (`apps/admin/src/pages/ApplicationsPage.tsx`, `requireRole('super_admin')` on
+every route):
+
+| Method | Path | What |
+|---|---|---|
+| `GET` | `/api/admin/store-owner-applications?status=pending` | List applications, optionally filtered |
+| `GET` | `/api/admin/store-owner-applications/:id` | One application |
+| `POST` | `/api/admin/store-owner-applications/:id/approve` | Approve (see below) |
+| `POST` | `/api/admin/store-owner-applications/:id/reject` | Reject, body `{ "reason": "..." }` (required) |
+
+**Approval** (`approveApplication` in `backend/src/services/storeOwnerApplications.service.ts`) runs
+in a single database transaction, row-locked (`.for('update')`) against double-approval races:
+
+1. Re-checks the application is still `pending` (409 if not — you can't approve twice, and this is
+   what makes concurrent approve+reject safe).
+2. Creates a new `stores` row **from the application's own stored columns** — never from anything in
+   the approve request, which carries no body at all. This is the load-bearing security property:
+   there's no way to smuggle a different store's data in through this endpoint.
+3. Inserts a `store_admins` row linking the applicant to the new store.
+4. Upgrades the applicant's `users.role` from `customer` to `store_admin` (only if it's still
+   `customer` — approving an application for someone who's already a `store_admin`, e.g. requesting
+   a second store some other way, doesn't downgrade or duplicate anything).
+5. Marks the application `approved`, with `storeId`, `reviewedBy`, `reviewedAt` set.
+
+**Rejection** just sets `status: 'rejected'` and `rejectionReason` — it never touches `users.role`,
+so a rejected applicant stays exactly `customer` and gets no store access, full stop. They can
+submit a new application at any time (the "one pending at a time" rule only blocks a second
+*simultaneous* one).
+
+### Suspending a store owner
+
+`apps/admin/src/pages/StoreOwnersPage.tsx` (Super Admin only) lists every `store_admin`/
+`super_admin` user with the stores they manage, and a **Suspend**/**Reactivate** toggle
+(`POST /api/admin/store-owners/:id/suspend` / `.../reactivate`, both `requireRole('super_admin')`).
+Suspending sets `users.suspended = true`, which `requireAuth` checks on **every** request platform-
+wide (§12) — a suspended store owner is locked out immediately, without losing their role or
+`store_admins` rows, so reactivating restores access exactly as it was with no re-approval needed.
+A super_admin cannot suspend their own account (`storeOwners.service.ts` rejects it with 400) — this
+prevents a platform admin from ever accidentally locking themselves out with no one left to
+reactivate them.
+
+### Creating the first Super Admin
+
+There's deliberately no self-service or in-app way to create the very first `super_admin` — every
+`super_admin`-granting action in the app (suspending, approving applications) requires already being
+one. Bootstrap it once, directly in the database, after that first user has signed in at least once
+(sign-in is what provisions their `users` row):
+
+```sql
+UPDATE users SET role = 'super_admin' WHERE email = 'you@example.com';
+```
+
+Or via Drizzle Studio (`npm run db:studio --workspace=backend`), which opens a browser UI against
+`DATABASE_URL` — find the row in the `users` table and edit `role` directly. Every `super_admin`
+after the first one can instead be granted the normal way: have them sign up as a customer, submit a
+store-owner application (or skip that and just run the same SQL again) — there's no UI path to grant
+`super_admin` from within the app itself, on purpose, since it's the platform's highest privilege
+level.
+
+## 24. South African currency and units
+
+Prices are stored as plain decimal numbers with no currency column (same as before) — South African
+Rand is a *display-time* formatting choice, not a schema change. `formatZAR()`
+(`shared/src/currency.ts`, exported from `@storedash/shared`) wraps
+`Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' })` and is used everywhere a price
+or revenue figure is rendered in both frontends (cart, checkout, order history, dashboard revenue/
+sales chart, product/service listings) — there is no remaining hardcoded `$` anywhere in either app.
+Address forms and defaults were updated to match: `stores.country` and the store-owner application's
+`country` both default to `'South Africa'` (was `'United States'`), and "State"/"ZIP" labels became
+"Province"/"Postal Code" in the admin app's Store Settings, New Store, and store-owner application
+forms. The `state`/`postalCode` column names themselves were left unchanged (a rename would touch
+every query and DTO for a label-only difference) — only their labels and defaults changed.
+
+## 25. Testing the authentication flows
+
+Everything below marked **verified** was actually exercised against this project's real Firebase
+project and live Postgres database during this work — not mocked, not assumed. Test accounts and
+data created for this were deleted afterward (Firebase accounts via `accounts:delete`, database rows
+directly) so no test data was left behind.
+
+**Verified, backend/API level** (curl against a local `npm run dev:backend` connected to the real
+`DATABASE_URL`, using Firebase's `identitytoolkit.googleapis.com` REST API directly for the parts a
+browser would normally do):
+- Email/password sign-up (`accounts:signUp`) → `POST /api/auth/sync` → `users` row created with
+  `role: 'customer'`.
+- Sign-in with the correct password succeeds; sign-in with a wrong password is rejected
+  (`INVALID_LOGIN_CREDENTIALS`, mapped client-side to `auth/invalid-credential`).
+- `PATCH /api/auth/me` updates name/phone; attempting to also smuggle `{"role":"super_admin"}` in
+  the same request left the role unchanged (`customer`) — confirmed the field is stripped by
+  validation, not just conventionally ignored. This also surfaced a real bug — an empty/all-stripped
+  request body crashed with a 500 (Drizzle's "no values to set") instead of a clean 400 — which was
+  fixed on the spot (`.refine()` in `backend/src/validators/auth.validator.ts` now requires at least
+  one field).
+- Password reset requests (`accounts:sendOobCode`) return success for both a real and a fictitious
+  email, confirming this project's Firebase email-enumeration protection is on and the frontend's
+  generic confirmation copy is correct.
+- Full application lifecycle: submit → 409 on a second simultaneous submission → `super_admin` lists
+  it → approves it → a `stores` row and `store_admins` link are created → the applicant's `/api/auth/me`
+  now shows `role: 'store_admin'` and the new store in `managedStoreIds` → the applicant can list
+  their own store via `GET /api/admin/stores` → attempting to modify an unrelated store ID returns
+  403 "You do not manage this store" → re-approving the same (now-approved) application returns 409.
+- Full rejection lifecycle: submit → reject with a reason → applicant's role stays `customer` →
+  every admin route still 403s for them.
+- Suspend/reactivate: suspending a `store_admin` makes every subsequent authenticated request for
+  them (including plain `GET /api/auth/me`) return 403 "This account has been suspended"; a
+  `super_admin` attempting to suspend their own account gets 400; reactivating restores access with
+  no other state changed.
+- Cross-cutting authorization checks: no token → 401; a garbage/invalid token → 401; a `store_admin`
+  attempting a `super_admin`-only route (approving someone else's application) → 403; a validation
+  error (submitting an application missing required fields) → 400 with per-field messages.
+- `tsc --noEmit` and `vite build` succeed for `backend`, `apps/customer`, and `apps/admin` with zero
+  errors after all of the above changes.
+
+**Not verified in a real browser** — this environment had no browser-automation tooling
+(Playwright/`chromium-cli`) installed, and installing one wasn't practical here. Both dev servers
+were confirmed to start and serve the new routes (`/sign-in`, `/sign-up`, `/forgot-password`,
+`/become-a-store-owner`, `/login`) with a `200`, which rules out a build-breaking error, but the
+following need a real browser before shipping:
+- The actual Google OAuth popup end-to-end (it opens a real Google-hosted page).
+- SMS delivery for phone sign-in (use Firebase's **Phone numbers for testing** feature, §10, to test
+  the *code* without needing a real phone).
+- Visual/responsive QA of the new pages across mobile/tablet/desktop, and a check of the browser
+  console for warnings/errors during these flows — the existing landing-page redesign work earlier
+  in this file (see the entry above) is a good template for how to do this pass with Playwright once
+  it's available.
+- The complete click-through UX: sign up → land on account page → apply to become a store owner →
+  (as a separate super_admin browser session) approve it → sign back in on the admin app → see the
+  new store on the dashboard.

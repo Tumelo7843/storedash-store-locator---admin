@@ -16,18 +16,25 @@ import {
 export const userRoleEnum = pgEnum('user_role', ['customer', 'store_admin', 'super_admin']);
 export const storeStatusEnum = pgEnum('store_status', ['active', 'inactive']);
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'completed', 'cancelled']);
+export const applicationStatusEnum = pgEnum('application_status', ['pending', 'approved', 'rejected']);
 
 // Firebase Auth is the identity provider; this table mirrors the subset of
 // profile data the app needs plus the authorization role. Role starts as
-// 'customer' for every new sign-in — 'store_admin' is granted explicitly via
-// a row in store_admins (see docs/README: "How to create an admin for a store").
+// 'customer' for every new sign-in — 'store_admin' is granted only via the
+// store-owner application approval flow (see storeOwnerApplications below and
+// docs/README §"Store-owner approval workflow"), never by the client.
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   uid: text('uid').notNull().unique(), // Firebase Auth UID
   email: text('email').notNull(),
   name: text('name'),
+  phone: text('phone'),
   avatarUrl: text('avatar_url'),
   role: userRoleEnum('role').notNull().default('customer'),
+  // Super-admin kill switch, independent of role/store_admins rows: a suspended
+  // user is rejected at requireAuth on every request regardless of what they'd
+  // otherwise be allowed to do, without losing their role or store assignments.
+  suspended: boolean('suspended').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -40,7 +47,7 @@ export const stores = pgTable('stores', {
   city: text('city').notNull(),
   state: text('state').notNull(),
   postalCode: text('postal_code').notNull(),
-  country: text('country').notNull().default('United States'),
+  country: text('country').notNull().default('South Africa'),
   // Nullable on purpose: stores can be created before a geocoded location exists.
   // The API and frontends must treat null lat/lng as "location unavailable", never
   // silently substitute a default coordinate.
@@ -77,6 +84,41 @@ export const storeAdmins = pgTable(
     // leading, which doesn't help a lookup by storeId alone (e.g. "who
     // manages store X") — hence the separate index here.
     index('store_admins_store_id_idx').on(table.storeId),
+  ],
+);
+
+// Self-service "become a store owner" requests. A customer submits business
+// info once; a super_admin reviews it. Approving one is what actually grants
+// store_admin — nothing here mutates users.role or store_admins directly
+// except through approveApplication (backend/src/services), which never
+// trusts anything the client sends beyond the storeOwnerApplications.id.
+export const storeOwnerApplications = pgTable(
+  'store_owner_applications',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    status: applicationStatusEnum('status').notNull().default('pending'),
+    businessName: text('business_name').notNull(),
+    category: text('category').notNull().default('General'),
+    description: text('description'),
+    address: text('address').notNull(),
+    city: text('city').notNull(),
+    state: text('state').notNull(), // Province
+    postalCode: text('postal_code').notNull(),
+    country: text('country').notNull().default('South Africa'),
+    phone: text('phone').notNull(),
+    email: text('email').notNull(),
+    // Set once approved: the store created from this application's business info.
+    storeId: integer('store_id').references(() => stores.id, { onDelete: 'set null' }),
+    reviewedBy: integer('reviewed_by').references(() => users.id, { onDelete: 'set null' }),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    rejectionReason: text('rejection_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('store_owner_applications_user_id_idx').on(table.userId),
+    index('store_owner_applications_status_idx').on(table.status),
   ],
 );
 
@@ -167,6 +209,13 @@ export const orderItems = pgTable(
 export const usersRelations = relations(users, ({ many }) => ({
   managedStores: many(storeAdmins),
   orders: many(orders),
+  storeOwnerApplications: many(storeOwnerApplications),
+}));
+
+export const storeOwnerApplicationsRelations = relations(storeOwnerApplications, ({ one }) => ({
+  user: one(users, { fields: [storeOwnerApplications.userId], references: [users.id], relationName: 'applicant' }),
+  store: one(stores, { fields: [storeOwnerApplications.storeId], references: [stores.id] }),
+  reviewer: one(users, { fields: [storeOwnerApplications.reviewedBy], references: [users.id], relationName: 'reviewer' }),
 }));
 
 export const storesRelations = relations(stores, ({ many }) => ({
