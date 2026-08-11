@@ -1,6 +1,7 @@
 import type { OpeningHours, Store } from '@storedash/shared';
 import { CheckCircle2, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { ImageUploadField } from '../components/ImageUploadField';
 import { DEFAULT_HOURS, OpeningHoursEditor } from '../components/OpeningHoursEditor';
 import { EmptyState } from '../components/ui/States';
 import { useStore } from '../context/StoreContext';
@@ -78,12 +79,8 @@ export function StoreSettingsPage() {
           <textarea value={form.description ?? ''} onChange={(e) => set('description', e.target.value)} rows={3} className="input" />
         </Field>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Logo / Image URL">
-            <input value={form.imageUrl ?? ''} onChange={(e) => set('imageUrl', e.target.value)} className="input" />
-          </Field>
-          <Field label="Banner Image URL">
-            <input value={form.bannerUrl ?? ''} onChange={(e) => set('bannerUrl', e.target.value)} className="input" />
-          </Field>
+          <ImageUploadField label="Logo Image" value={form.imageUrl ?? ''} onChange={(url) => set('imageUrl', url)} folder="stores" />
+          <ImageUploadField label="Banner Image" value={form.bannerUrl ?? ''} onChange={(url) => set('bannerUrl', url)} folder="stores" />
         </div>
         <Field label="Store Status">
           <select value={form.status} onChange={(e) => set('status', e.target.value as Store['status'])} className="input bg-white">

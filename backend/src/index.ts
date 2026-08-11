@@ -11,6 +11,7 @@ import { productsRouter, adminProductsRouter } from './routes/products.routes.js
 import { servicesRouter, adminServicesRouter } from './routes/services.routes.js';
 import { ordersRouter, adminOrdersRouter } from './routes/orders.routes.js';
 import { adminDashboardRouter } from './routes/dashboard.routes.js';
+import { uploadsRouter } from './routes/uploads.routes.js';
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use('/api/admin/products', adminProductsRouter);
 app.use('/api/admin/services', adminServicesRouter);
 app.use('/api/admin/orders', adminOrdersRouter);
 app.use('/api/admin/dashboard', adminDashboardRouter);
+app.use('/api/admin/uploads', uploadsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

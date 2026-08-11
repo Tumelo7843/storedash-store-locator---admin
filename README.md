@@ -172,6 +172,9 @@ Every variable is documented in [.env.example](.env.example). Summary:
 | `ALLOWED_ORIGINS` | yes | Comma-separated frontend origins for CORS |
 | `FIREBASE_PROJECT_ID` | yes | Must match both frontends' `VITE_FIREBASE_PROJECT_ID` |
 | `FIREBASE_SERVICE_ACCOUNT_BASE64` | on Render (optional on GCP) | base64-encoded service account JSON |
+| `SUPABASE_URL` | for image uploads | Project URL, from Supabase dashboard > Project Settings > API (§22) |
+| `SUPABASE_SERVICE_ROLE_KEY` | for image uploads | **Secret.** `service_role` key, never the `anon` key (§22) |
+| `SUPABASE_STORAGE_BUCKET` | no | Defaults to `images` |
 | `NODE_ENV` | yes | `development` or `production` |
 | `PORT` | no | Defaults to 3001; Render injects its own |
 
@@ -187,8 +190,10 @@ Every variable is documented in [.env.example](.env.example). Summary:
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | no | |
 | `VITE_FIREBASE_APP_ID` | yes | |
 
-**Never put in a frontend `.env`:** `DATABASE_URL`, `FIREBASE_SERVICE_ACCOUNT_BASE64`, or any
-database credential. The `VITE_` Firebase values are not secret in the traditional sense (the
+**Never put in a frontend `.env`:** `DATABASE_URL`, `FIREBASE_SERVICE_ACCOUNT_BASE64`,
+`SUPABASE_SERVICE_ROLE_KEY`, or any database credential. Note that neither frontend needs any
+Supabase variable at all — uploads go through the backend (§22), so no Supabase key of any kind,
+not even a public one, ships in either browser bundle. The `VITE_` Firebase values are not secret in the traditional sense (the
 Firebase Web SDK is designed to ship its config to the browser — it identifies the project, it
 doesn't authenticate as it), but they still don't belong in the backend's env either. What
 actually protects your Firebase project is the Console's **Authorized domains** list (Authentication
@@ -593,3 +598,108 @@ npm run db:generate       # generate a new Drizzle migration from schema.ts
 npm run db:migrate        # apply pending migrations to DATABASE_URL
 npm run db:push           # dev-only schema sync — do not use in production (§7)
 ```
+
+## 22. Image uploads (Supabase Storage)
+
+Store logos/banners and product/service photos are uploaded as files from the admin app and stored
+as public URLs on the `imageUrl`/`bannerUrl` columns — the database (Neon Postgres) never holds the
+image bytes themselves, only the URL. The actual files live in **Supabase Storage**.
+
+### Why it works this way
+
+The admin app authenticates with **Firebase Auth**, not Supabase Auth, so there's no Supabase user
+session in the browser to scope a Row Level Security policy to. Rather than bridge that gap, the
+browser never talks to Supabase at all:
+
+```
+Admin app → (Firebase ID token) → Backend → (service_role key) → Supabase Storage
+```
+
+The browser sends the image file to the backend (`POST /api/admin/uploads`, protected by the same
+`requireAuth` + `requireRole('store_admin', 'super_admin')` middleware as every other admin route —
+see §12). The backend uploads it to Supabase using the `service_role` key and returns a public URL,
+which the frontend then saves via the normal `PUT`/`POST` store/product/service endpoints, exactly
+as if it had been typed into a plain URL field. No Supabase key — public or secret — is ever present
+in `apps/admin` or `apps/customer`.
+
+### 1. Create (or reuse) a Supabase project
+
+1. Go to [supabase.com/dashboard](https://supabase.com/dashboard) and sign in — if your GitHub
+   account is already connected, any existing organizations/projects tied to it show up on this
+   page directly. If a project for this app already exists, skip to step 2.
+2. Otherwise, **New project** → pick an organization (Supabase can create one from your GitHub
+   account automatically) → name it (e.g. `storedash`) → choose a region close to your Render
+   backend's region → set a database password (you won't need this password anywhere in this
+   app — it's only for Supabase's own Postgres, which this project does not use; the app's data
+   stays in Neon) → **Create new project**. Takes a minute or two to provision.
+
+### 2. Create the storage bucket
+
+1. In the project, open **Storage** in the left sidebar.
+2. **New bucket** → name it `images` (must match `SUPABASE_STORAGE_BUCKET`, which defaults to
+   `images` if you don't set it) → toggle **Public bucket** on → Create.
+   - "Public" here only controls *read* access (anyone with a file's URL can view it — needed
+     since these images are shown on public store pages and the customer app). It does **not**
+     allow public uploads. Only the backend's `service_role` key can write to the bucket, and that
+     key is never exposed to any browser — see §5.
+3. No additional bucket policies are needed: uploads always go through the backend using
+   `service_role`, which bypasses Row Level Security entirely, and the bucket being "Public"
+   already grants anonymous read via `getPublicUrl()`. There's nothing to configure on the
+   **Policies** tab for this setup.
+
+### 3. Find your keys
+
+Project Settings (gear icon) > **API**:
+
+| Value | Where | Safe in a frontend? |
+|---|---|---|
+| Project URL | API > Project URL | Yes, but unused here (backend-only) |
+| `anon` `public` key | API > Project API keys | Yes — but this project doesn't use it anywhere |
+| `service_role` key | API > Project API keys (click "Reveal") | **No — never.** Full admin access to every table and bucket, bypasses all Row Level Security. Backend-only. |
+
+Only two of these are actually used, both server-side: **Project URL** and **`service_role`
+key**.
+
+### 4. Configure environment variables
+
+`backend/.env` (local) and Render's environment variable dashboard (production) — **never**
+`apps/admin/.env` or `apps/customer/.env`:
+
+```bash
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJ...           # the service_role secret, not anon
+SUPABASE_STORAGE_BUCKET=images             # optional, this is the default
+```
+
+After setting these on Render, redeploy the backend (or let the env var change trigger it
+automatically) — like `FIREBASE_SERVICE_ACCOUNT_BASE64`, this is read once at process start via
+`backend/src/lib/supabase.ts`, which stays `null` (and the upload route returns a clear 500) until
+both variables are present, so the rest of the app keeps working even before this is configured.
+
+### 5. How it's implemented
+
+- `backend/src/routes/uploads.routes.ts` — `POST /api/admin/uploads?folder=stores|products|services`,
+  `multer` (5MB memory-buffered limit) + the same auth/role middleware as other admin routes.
+- `backend/src/controllers/uploads.controller.ts` — validates MIME type (JPEG/PNG/WebP/GIF only),
+  uploads the buffer to `{folder}/{userId}/{timestamp}-{uuid}.{ext}` in the bucket, returns
+  `{ data: { url } }`.
+- `apps/admin/src/lib/upload.ts` — client helper: pre-validates type/size for instant feedback,
+  then `POST`s the file as `multipart/form-data` with the Firebase ID token as the bearer token.
+- `apps/admin/src/components/ImageUploadField.tsx` — the UI: thumbnail preview, an "Upload image"
+  button, and a plain URL text input (so pasting an already-hosted URL still works). Used by
+  `StoreSettingsPage` (logo, banner), `ProductModal`, and `ServiceModal`.
+
+### 6. Testing the full flow
+
+1. Set the three env vars in `backend/.env`, restart `npm run dev:backend`.
+2. Sign into the admin app as a `store_admin` or `super_admin` (§15), open a product/service/store
+   settings form, click **Upload image**, pick a file.
+3. Confirm the thumbnail updates and the URL field fills in with a
+   `https://<project-ref>.supabase.co/storage/v1/object/public/images/...` URL.
+4. Save the form — this `PUT`/`POST`s the URL to the backend like any other field, which persists
+   it to the `image_url`/`banner_url` column in Neon Postgres (§5 in the original image-upload
+   discussion; no schema change was needed, these columns already existed as plain `text`).
+5. Open the customer app and confirm the image renders on the store/product/service card — it's
+   just an `<img src>` pointed at the public Supabase URL, no auth or SDK involved on that side.
+6. Paste the same image URL directly into a browser tab to confirm it loads without being signed
+   in, verifying the bucket's public-read policy.

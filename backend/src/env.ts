@@ -27,4 +27,15 @@ export const env = {
   // Base64-encoded service account JSON. Required off-GCP (e.g. Render).
   // On GCP compute this can be omitted in favor of Application Default Credentials.
   firebaseServiceAccountBase64: process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 || '',
+
+  // Supabase Storage for product/service/store images (see README "Image uploads").
+  // Optional at startup (not `required()`) so the rest of the app keeps working
+  // without it configured — the uploads route itself rejects with a clear error
+  // if these are missing when someone actually tries to upload.
+  supabaseUrl: process.env.SUPABASE_URL || '',
+  // Service role key only — never the anon/public key. It bypasses Row Level
+  // Security, which is fine here because it's used exclusively server-side,
+  // behind this app's own requireAuth/requireRole checks.
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET || 'images',
 };

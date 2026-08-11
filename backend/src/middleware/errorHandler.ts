@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
+import { MulterError } from 'multer';
 import { ZodError } from 'zod';
 import { AppError } from '../utils/errors.js';
 
@@ -7,6 +8,12 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     res.status(err.statusCode).json({
       error: { message: err.message, code: err.code, ...(err.details ? { details: err.details } : {}) },
     });
+    return;
+  }
+
+  if (err instanceof MulterError) {
+    const message = err.code === 'LIMIT_FILE_SIZE' ? 'Image must be smaller than 5MB' : err.message;
+    res.status(400).json({ error: { message, code: 'BAD_REQUEST' } });
     return;
   }
 

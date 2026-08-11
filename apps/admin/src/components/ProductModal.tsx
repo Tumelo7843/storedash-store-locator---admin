@@ -1,6 +1,7 @@
 import type { Product } from '@storedash/shared';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { ImageUploadField } from './ImageUploadField';
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -119,9 +120,7 @@ export function ProductModal({ isOpen, onClose, onSave, editingProduct }: Produc
             </Field>
           </div>
 
-          <Field label="Image URL">
-            <input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://…" className="input" />
-          </Field>
+          <ImageUploadField label="Product Image" value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} folder="products" />
 
           <Field label="Description">
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className="input" />

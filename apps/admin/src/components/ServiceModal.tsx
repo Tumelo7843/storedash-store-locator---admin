@@ -1,6 +1,7 @@
 import type { Service } from '@storedash/shared';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { ImageUploadField } from './ImageUploadField';
 
 interface ServiceModalProps {
   isOpen: boolean;
@@ -101,10 +102,7 @@ export function ServiceModal({ isOpen, onClose, onSave, editingService }: Servic
             <input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required className="input" />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Image URL</label>
-            <input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://…" className="input" />
-          </div>
+          <ImageUploadField label="Service Image" value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} folder="services" />
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1">Description</label>
