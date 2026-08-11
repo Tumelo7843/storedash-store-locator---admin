@@ -74,7 +74,7 @@ export function AccountPage() {
       ) : (
         env.adminUrl && (
           <a
-            href={`${env.adminUrl}/login`}
+            href={env.adminUrl}
             className="flex items-center justify-center gap-2 py-3 rounded-xl bg-primary/15 hover:bg-primary/25 text-primary text-sm font-bold border border-primary/30"
           >
             <ShieldCheck className="size-4" /> Go to admin dashboard

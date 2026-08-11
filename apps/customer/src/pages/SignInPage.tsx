@@ -206,7 +206,7 @@ export function SignInPage() {
           </p>
           {env.adminUrl && (
             <a
-              href={`${env.adminUrl}/login`}
+              href={env.adminUrl}
               className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-800 border border-gray-200 rounded-full px-3.5 py-1.5"
             >
               <ShieldCheck className="size-3.5" /> Store owner or admin? Sign in here

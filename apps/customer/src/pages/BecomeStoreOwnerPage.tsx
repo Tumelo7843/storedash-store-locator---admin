@@ -49,7 +49,7 @@ function StatusBanner({ application }: { application: StoreOwnerApplication }) {
           </p>
           {env.adminUrl && (
             <a
-              href={`${env.adminUrl}/login`}
+              href={env.adminUrl}
               className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold"
             >
               <ShieldCheck className="size-3.5" /> Go to admin dashboard

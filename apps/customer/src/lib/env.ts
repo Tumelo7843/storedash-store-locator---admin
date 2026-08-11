@@ -5,10 +5,9 @@ function required(name: string, value: string | undefined): string {
 
 export const env = {
   apiUrl: required('VITE_API_URL', import.meta.env.VITE_API_URL),
-  // Base URL of the admin app, for the "Admin sign in" link on the auth pages.
-  // Optional: falls back to a relative /admin path if not set, so local dev
-  // (where the admin app usually runs on its own port) still needs this set
-  // for the link to actually work — see apps/customer/.env.
+  // Full URL of the admin app's sign-in page (e.g. https://admin.example.com/login),
+  // used as-is (no path appended) for the "Admin sign in" link on the auth
+  // pages. Optional — the link is hidden if unset. See apps/customer/.env.
   adminUrl: import.meta.env.VITE_ADMIN_URL || '',
   firebase: {
     apiKey: required('VITE_FIREBASE_API_KEY', import.meta.env.VITE_FIREBASE_API_KEY),

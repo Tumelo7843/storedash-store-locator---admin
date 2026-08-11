@@ -24,7 +24,7 @@ function NoAccessCard() {
         </div>
         {!suspended && env.customerUrl && (
           <a
-            href={`${env.customerUrl}/become-a-store-owner`}
+            href={env.customerUrl}
             className="w-full px-4 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-bold"
           >
             Request store-owner access
@@ -131,7 +131,7 @@ export function LoginPage() {
         {env.customerUrl && (
           <p className="text-xs text-gray-500 text-center pt-2 border-t border-gray-100 w-full">
             Not a store owner yet?{' '}
-            <a href={`${env.customerUrl}/become-a-store-owner`} className="font-bold text-primary hover:underline">
+            <a href={env.customerUrl} className="font-bold text-primary hover:underline">
               Sign up as a customer and request access
             </a>
           </p>

@@ -247,8 +247,8 @@ Every variable is documented in [.env.example](.env.example). Summary:
 | `VITE_FIREBASE_STORAGE_BUCKET` | no | |
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | no | |
 | `VITE_FIREBASE_APP_ID` | yes | |
-| `VITE_ADMIN_URL` | `apps/customer/.env` only, no | Admin app's base URL — powers the "Admin sign in" link on the customer sign-in page (§23). Link is hidden if unset. |
-| `VITE_CUSTOMER_URL` | `apps/admin/.env` only, no | Customer app's base URL — powers the "Sign up as a customer" / "Request store-owner access" links on the admin login/no-access screens (§23). Link is hidden if unset. |
+| `VITE_ADMIN_URL` | `apps/customer/.env` only, no | **Full URL, including path** (e.g. `https://admin.example.com/login`) — used as-is, with no path appended in code, for the "Admin sign in" link on the customer sign-in page (§23). Link is hidden if unset. |
+| `VITE_CUSTOMER_URL` | `apps/admin/.env` only, no | **Full URL, including path** (e.g. `https://shop.example.com/account`) — used as-is, with no path appended in code, for the "Sign up as a customer" / "Request store-owner access" links on the admin login/no-access screens (§23). Link is hidden if unset. |
 
 **Never put in a frontend `.env`:** `DATABASE_URL`, `FIREBASE_SERVICE_ACCOUNT_BASE64`,
 `SUPABASE_SERVICE_ROLE_KEY`, or any database credential. Note that neither frontend needs any
@@ -848,7 +848,9 @@ like any other.
   is also how a *new* phone number signs up, since Firebase phone auth doesn't distinguish sign-up
   from sign-in; there's no separate phone sign-up form. Below both tabs, a **Google** button
   (`signInWithPopup`). A **"Store owner or admin? Sign in here"** link (only rendered when
-  `VITE_ADMIN_URL` is set, §5) sends store owners to the admin app instead.
+  `VITE_ADMIN_URL` is set, §5) sends store owners to the admin app's sign-in page — `VITE_ADMIN_URL`
+  must be the *full* URL of that page (e.g. `.../login`), since the link uses it as-is with no path
+  appended.
 - **Forgot password** (`/forgot-password`): `sendPasswordResetEmail`. The confirmation message is
   deliberately generic ("if an account exists for this email…") regardless of whether the address is
   actually registered — this project's Firebase settings have email-enumeration protection enabled,
@@ -878,8 +880,8 @@ with it from then on.
 
 A signed-in user whose role is `customer`, or whose account is `suspended`, sees a dedicated
 "no access"/"suspended" screen (`NoAccessCard` in `LoginPage.tsx`) instead of a broken dashboard,
-with a link to the customer app's `/become-a-store-owner` page (via `VITE_CUSTOMER_URL`, §5) when
-that's the relevant next step.
+with a link to a page in the customer app (via `VITE_CUSTOMER_URL`, §5 — again the *full* URL, e.g.
+`.../account` or `.../become-a-store-owner`, used as-is) when that's the relevant next step.
 
 ### The store-owner application: schema and lifecycle
 
