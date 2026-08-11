@@ -17,7 +17,85 @@ plain TypeScript types.
   independently verify.
 - **Database**: PostgreSQL (Cloud SQL in production), accessed through Drizzle ORM.
 - **Auth**: Firebase Authentication (Google Sign-In) for identity; a `users.role` column plus a
-  `store_admins` join table for authorization (see §22–23).
+  `store_admins` join table for authorization (see §12–13).
+
+## Customer landing page redesign — 2026-08-11
+
+The customer discovery/landing page (`apps/customer/src/pages/HomePage.tsx`) and the app's visual
+identity were reworked. No backend route, database schema, Firebase config, or API contract
+changed — everything below is frontend-only, and every other section of this README (env vars,
+local dev, Firebase setup, Vercel/Render deployment, CORS) still applies exactly as written.
+
+**What changed:**
+
+- **Landing page layout**: stores list on the left, interactive Leaflet map on the right (desktop/
+  tablet ≥1024px). Below that breakpoint the page switches to a **List / Map toggle** instead of
+  shrinking the two-column layout — a 50/50 split is unusable at phone width, so mobile gets a
+  full-width list view and a full-width map view with a bottom-sheet store card, switched with a
+  segmented control.
+- **List ↔ map selection**: clicking a store in the list highlights its marker (grows, switches to
+  the accent blue, map flies to it) and opens a detail card (photo, category, open/closed, address,
+  hours, phone, "View Store" / "Directions"). Clicking a marker does the same in reverse and opens
+  the same detail card. Clicking an *already-selected* row/marker navigates to the full store page
+  (`/stores/:id`) — one click previews, a second confirms, matching how map-list pickers usually
+  behave.
+- **Visual identity**: dark purple primary, charcoal neutral background, blue accent — defined once
+  as Tailwind v4 `@theme` tokens in `apps/customer/src/index.css` (`--color-primary`,
+  `--color-gray-50…900`, `--color-surface`, `--color-accent`) so the whole app inherits the same
+  palette instead of only the landing page. Purple is used for branding/buttons/nav, blue for
+  selection/links/focus, keeping the two from competing for the same elements. Status colors
+  (open/closed, stock levels, order status) were re-tuned for contrast against the dark surfaces.
+- **Map**: switched to CARTO's free, keyless dark basemap tiles; themed zoom control/popups/
+  attribution; a floating "center on my location" button; purple (unselected) / blue (selected)
+  marker pins with a fly-to animation on selection; a graceful "No store locations to display yet"
+  overlay when the current filter has zero stores with coordinates. See §17 for the full map
+  behavior.
+- **Consistency + small UX fixes**: `StorePage`, `CartPage`, `OrdersPage`, `OrderDetailPage`,
+  `AccountPage`, `Layout`, and the shared loading/error/empty states (`components/ui/States.tsx`)
+  were re-themed so the rest of the app matches the redesigned landing page rather than reverting to
+  a light shell around it. Added: a clearable search field, skeleton loading rows for the store list
+  (replacing a blocking spinner), and short (150–250ms) `prefers-reduced-motion`-aware transitions
+  for state changes — no decorative animation was added.
+- **`emilkowalski/skills`**: `npx skills add emilkowalski/skills` was run as requested, but this
+  sandbox has no DNS resolution for `github.com` (the `skills` CLI only installs from git sources),
+  so the package could not be fetched. The animation choices above (short transform/opacity
+  transitions, `cubic-bezier(0.32, 0.72, 0, 1)` easing, restraint, `prefers-reduced-motion` support)
+  follow that author's publicly documented conventions applied by hand instead. **No new npm
+  dependencies were added** — the redesign uses only the packages already in `apps/customer/package.json`
+  (`leaflet`, `react-leaflet`, `lucide-react`, Tailwind CSS v4) plus plain CSS.
+
+**Customer app structure** (`apps/customer/src`):
+
+```
+src/
+  components/
+    Layout.tsx          Sticky header/nav — logo, Discover/Orders/Cart/Account links
+    StoreMap.tsx         Leaflet map: markers, popups, locate-me control, fly-to-selection
+    ui/States.tsx        Shared Spinner / ErrorState / EmptyState
+  context/
+    AuthContext.tsx      Firebase auth state + Google sign-in/out, syncs the backend user profile
+    CartContext.tsx      Client-side cart (single-store at a time), checkout submits via lib/api
+  lib/
+    api.ts               fetch wrapper + typed calls to every backend endpoint the customer app uses
+    env.ts                Reads/validates VITE_* env vars
+    firebase.ts           Firebase Web SDK init
+    geo.ts                useGeolocation hook + Haversine distance helper (no fallback coordinate)
+    hours.ts               Opening-hours formatting + isStoreOpenNow
+    leafletIcons.ts        Inline-SVG marker icons (purple = default, blue = selected)
+    useAsync.ts            Small loading/error/data fetch hook used by every page
+  pages/
+    HomePage.tsx          Redesigned landing page (list + map + mobile toggle) — see above
+    StorePage.tsx          Store detail: info, hours, products/services tabs, add-to-cart
+    CartPage.tsx / CartContext-backed checkout
+    OrdersPage.tsx / OrderDetailPage.tsx   Order history (requires sign-in)
+    AccountPage.tsx        Sign-in/out, profile, role badge
+  App.tsx                 Routes
+  index.css                Tailwind v4 theme tokens + Leaflet chrome theming (see above)
+```
+
+Running locally, environment variables, connecting to the Render backend, Vercel deployment,
+Firebase configuration, and CORS are all unchanged by this redesign — see §5 (env vars), §6 (local
+dev), §9 (deployment + CORS), and §10 (Firebase) below.
 
 ## 2. Architecture
 
@@ -375,15 +453,30 @@ real stock count.
 
 ## 17. How maps and directions work
 
-The customer app uses **Leaflet** with **OpenStreetMap** tile layers
-(`apps/customer/src/components/StoreMap.tsx`) — no API key, no billing account, no usage quota to
-manage. It's lazy-loaded into its own JS chunk since it's the single heaviest dependency in the app
-and only needed on the store-discovery page.
+The customer app uses **Leaflet** with **OpenStreetMap** data via **CARTO's dark basemap tiles**
+(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png`, attributed to both OSM and CARTO
+in the map's attribution control) — still no API key, no billing account, no usage quota to manage,
+just a dark-themed tile set instead of the default light one so the map matches the rest of the app.
+It's lazy-loaded into its own JS chunk (`apps/customer/src/components/StoreMap.tsx`) since it's the
+single heaviest dependency in the app and only needed on the store-discovery page.
 
 - Store markers plot only stores with non-null `lat`/`lng`. A store without coordinates yet is
   never given a fake default position — it's excluded from the map and shown in the list with a
   "location not available" note instead (set coordinates in the admin app's Store Settings page).
-- The user's own location (when granted) is a separate pulsing marker; the map is fully usable
+  If **no** store in the current filter has coordinates, the map shows a "No store locations to
+  display yet" overlay instead of an empty, unexplained tile view.
+- Markers are purple (`--color-primary`) by default and switch to blue (`--color-accent`), grow, and
+  gain a glow when their store is selected — from either the list or the marker itself
+  (`apps/customer/src/lib/leafletIcons.ts`). Selecting a store smoothly flies the map to it
+  (`FlyToSelected` in `StoreMap.tsx`); the initial load fits the map to every visible marker
+  (`FitToMarkers`).
+- Each marker's popup and the list's detail card both offer a **"View Store"** link (navigates to
+  `/stores/:id`) so a customer can go from "found it on the map" to the store's products/services in
+  one click, without leaving the landing page just to look.
+- A floating "center on my location" control sits on the map itself (bottom-right, matching the
+  brand purple) in addition to the "use my location" control in the list header — both call the same
+  `useGeolocation` hook, so their state (loading/granted/denied) stays in sync.
+- The user's own location (when granted) is a separate pulsing blue marker; the map is fully usable
   without it, and denial is handled gracefully (`apps/customer/src/lib/geo.ts`) — no default
   fallback city is substituted.
 - "Get Directions" opens `https://www.google.com/maps/dir/?api=1&destination=<store address>` in
@@ -391,6 +484,10 @@ and only needed on the store-discovery page.
 - Distance-based sorting on the store list uses a plain Haversine calculation
   (`apps/customer/src/lib/geo.ts`), accurate enough for "nearby stores" without any external
   service.
+- Below the `lg` (1024px) breakpoint, the list and map are two full-width views switched by a
+  segmented **List / Map** control rather than a shrunk two-column layout, which is unusable at
+  phone width. Selection state is shared between both views, so switching tabs never loses the
+  current selection.
 
 ## 18. Troubleshooting
 
@@ -447,6 +544,19 @@ Before pointing real users at this:
   with 401. An invalid/garbage bearer token is rejected with 401. Malformed JSON bodies return
   400. The public store-listing endpoint requires no auth token (confirmed by getting a 500 from
   an intentionally-unreachable test database rather than a 401).
+- **Customer landing page redesign (2026-08-11)**: verified in a real headless Chromium browser
+  (Playwright) against the local backend (`npm run dev:backend`) connected to a live database, at
+  both a 1440px desktop viewport and a 390px mobile viewport. Confirmed: the store list loads real
+  data and renders themed; the map renders CARTO dark tiles with a themed zoom control and locate
+  button; selecting a store from the list highlights the correct marker (flies to it, switches it
+  blue) and opens the detail card with correct data; the mobile List/Map toggle stays reachable in
+  both states and the bottom-sheet detail card renders over the map; "View Store" navigates to the
+  correct `/stores/:id` and that page renders themed; Cart/Orders/Account empty and signed-out
+  states render themed. This pass caught and fixed two real bugs before considering the work done:
+  Leaflet throwing on a `display:none` map container when switching mobile tabs, and the mobile
+  List/Map toggle being nested inside the panel it hides (stranding the user in Map view with no
+  way back). Not covered by this pass: authenticated flows (sign-in, checkout, order history),
+  since Playwright wasn't driven through Google's OAuth popup.
 
 **What still needs to be tested against a real deployment** (requires a real `DATABASE_URL` and
 Firebase project, which weren't available in the environment this was built in):

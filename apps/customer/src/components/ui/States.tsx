@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 
 export function Spinner({ label = 'Loading…' }: { label?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-gray-400">
-      <Loader2 className="size-6 animate-spin" />
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-gray-500 sd-animate-in">
+      <Loader2 className="size-6 animate-spin text-primary" />
       <p className="text-sm font-medium">{label}</p>
     </div>
   );
@@ -12,13 +12,16 @@ export function Spinner({ label = 'Loading…' }: { label?: string }) {
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center px-4">
-      <div className="p-3 rounded-full bg-rose-50 text-rose-500">
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center px-4 sd-animate-in">
+      <div className="p-3 rounded-full bg-rose-500/10 text-rose-400">
         <AlertTriangle className="size-6" />
       </div>
       <p className="text-sm font-semibold text-gray-700 max-w-sm">{message}</p>
       {onRetry && (
-        <button onClick={onRetry} className="mt-1 px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90">
+        <button
+          onClick={onRetry}
+          className="mt-1 px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors"
+        >
           Try again
         </button>
       )}
@@ -38,8 +41,8 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-16 text-center px-4">
-      <div className="p-3 rounded-full bg-gray-100 text-gray-400 mb-1">
+    <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center px-4 sd-animate-in">
+      <div className="p-3 rounded-full bg-gray-100 text-gray-500 mb-1">
         <Icon className="size-6" />
       </div>
       <p className="text-sm font-bold text-gray-700">{title}</p>

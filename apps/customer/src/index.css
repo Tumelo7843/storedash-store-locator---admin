@@ -1,12 +1,160 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+/*
+ * StoreDash visual identity: dark purple primary, charcoal backgrounds, blue accent.
+ *
+ * Rather than rewrite every `text-gray-900` / `border-gray-200` class name across
+ * the app, the neutral scale (gray-50..900) is redefined here so the existing
+ * semantic usage (50 = page-level background, 900 = high-contrast text) maps onto
+ * a charcoal-with-purple-tint scale instead of Tailwind's default light-mode
+ * greys. `white`/`black` are intentionally left at their real values — the app
+ * uses literal `text-white` for button labels and translucent overlays, which
+ * must stay actual white regardless of theme. Card surfaces use the new
+ * `surface` token instead of `white`. `primary` (brand: buttons, nav, logo) and
+ * `accent` (selection, links, focus) are two distinct hues so the two concerns
+ * never fight for the same pixels.
+ */
 @theme {
-  --color-primary: #2563eb;
+  --color-gray-50: #0d0b12;
+  --color-gray-100: #1c1926;
+  --color-gray-200: #2a2536;
+  --color-gray-300: #3a3348;
+  --color-gray-400: #6b6480;
+  --color-gray-500: #8b8299;
+  --color-gray-600: #a89fbd;
+  --color-gray-700: #c3bcd6;
+  --color-gray-800: #ded8ea;
+  --color-gray-900: #f6f4fa;
+
+  --color-surface: #17141f;
+  --color-surface-hover: #1e1a29;
+
+  --color-primary: #7c3aed;
+  --color-accent: #3b82f6;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-gray-50);
 }
 
 .leaflet-container {
   width: 100%;
   height: 100%;
   font-family: inherit;
+  background: #14121b;
+}
+
+/* Leaflet chrome (zoom controls, popups, attribution) re-themed to match the
+   charcoal/purple palette instead of its default white UI. */
+.leaflet-control-zoom {
+  border: 1px solid var(--color-gray-200) !important;
+  border-radius: 0.75rem !important;
+  overflow: hidden;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.6) !important;
+}
+
+.leaflet-control-zoom a {
+  background-color: var(--color-surface) !important;
+  color: var(--color-gray-800) !important;
+  border-color: var(--color-gray-200) !important;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: var(--color-gray-100) !important;
+  color: var(--color-accent) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--color-surface);
+  color: var(--color-gray-800);
+  border: 1px solid var(--color-gray-200);
+  border-radius: 0.875rem;
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.65);
+}
+
+.leaflet-popup-tip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: none;
+}
+
+.leaflet-popup-close-button {
+  color: var(--color-gray-500) !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: var(--color-gray-800) !important;
+}
+
+.leaflet-control-attribution {
+  background: rgba(23, 20, 32, 0.75) !important;
+  color: var(--color-gray-500) !important;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.leaflet-control-attribution a {
+  color: var(--color-gray-400) !important;
+}
+
+@keyframes sd-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes sd-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sd-animate-in {
+  animation: sd-fade-up 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sd-animate-in {
+    animation: none;
+  }
+}
+
+/* Thin, theme-colored scrollbar for the store list / chip rows. */
+.sd-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-300) transparent;
+}
+
+.sd-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.sd-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--color-gray-300);
+  border-radius: 9999px;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

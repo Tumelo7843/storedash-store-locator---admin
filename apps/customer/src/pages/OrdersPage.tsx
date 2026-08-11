@@ -6,10 +6,10 @@ import { fetchMyOrders } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  processing: 'bg-blue-50 text-blue-700 border-blue-200',
-  completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  cancelled: 'bg-gray-100 text-gray-600 border-gray-200',
+  pending: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  processing: 'bg-accent/15 text-accent border-accent/30',
+  completed: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  cancelled: 'bg-gray-200 text-gray-500 border-gray-300',
 };
 
 export function OrdersPage() {
@@ -53,7 +53,7 @@ export function OrdersPage() {
           <Link
             key={order.id}
             to={`/orders/${order.id}`}
-            className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between hover:border-primary/40 transition-colors"
+            className="bg-surface border border-gray-200 rounded-xl p-4 flex items-center justify-between hover:border-accent/50 transition-colors"
           >
             <div>
               <p className="text-sm font-bold text-gray-900">Order #{order.id}</p>

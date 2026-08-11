@@ -32,20 +32,20 @@ export function StorePage() {
 
   return (
     <div className="flex-1 flex flex-col">
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white relative overflow-hidden">
+      <div className="bg-linear-to-r from-gray-50 via-[#241a3d] to-gray-50 text-white relative overflow-hidden">
         {store.bannerUrl && <img src={store.bannerUrl} alt="" className="absolute inset-0 size-full object-cover opacity-25" />}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 relative z-10">
           <div className="flex items-center gap-3 mb-2">
             {openNow !== null && (
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${openNow ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'}`}>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${openNow ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-slate-500/20 text-slate-300 border border-slate-500/30'}`}>
                 {openNow ? 'Open now' : 'Closed now'}
               </span>
             )}
             <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-white/90 text-xs font-bold border border-white/20">{store.category}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">{store.name}</h1>
-          {store.description && <p className="text-sm text-gray-300 mt-2 max-w-2xl">{store.description}</p>}
-          <p className="text-sm text-gray-300 mt-2 flex items-center gap-2">
+          {store.description && <p className="text-sm text-slate-300 mt-2 max-w-2xl">{store.description}</p>}
+          <p className="text-sm text-slate-300 mt-2 flex items-center gap-2">
             <MapPin className="size-4 text-primary" />
             {store.address}, {store.city}, {store.state} {store.postalCode}
           </p>
@@ -54,7 +54,7 @@ export function StorePage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-4 flex flex-col gap-6">
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
+          <div className="bg-surface border border-gray-200 rounded-2xl p-6">
             <h3 className="text-base font-bold mb-4 pb-3 border-b border-gray-100 flex items-center gap-2">
               <MapPin className="size-5 text-primary" /> Store Information
             </h3>
@@ -62,17 +62,17 @@ export function StorePage() {
               {store.phone && (
                 <div className="flex items-center gap-3">
                   <Phone className="size-4 text-gray-400 shrink-0" />
-                  <a href={`tel:${store.phone}`} className="hover:text-primary">{store.phone}</a>
+                  <a href={`tel:${store.phone}`} className="hover:text-accent">{store.phone}</a>
                 </div>
               )}
               {store.email && (
                 <div className="flex items-center gap-3">
                   <Globe className="size-4 text-gray-400 shrink-0" />
-                  <a href={`mailto:${store.email}`} className="hover:text-primary">{store.email}</a>
+                  <a href={`mailto:${store.email}`} className="hover:text-accent">{store.email}</a>
                 </div>
               )}
               {store.lat === null && (
-                <p className="text-xs text-amber-600 italic">Precise location not available for this store yet — showing address only.</p>
+                <p className="text-xs text-amber-400 italic">Precise location not available for this store yet — showing address only.</p>
               )}
             </div>
 
@@ -93,7 +93,7 @@ export function StorePage() {
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
+          <div className="bg-surface border border-gray-200 rounded-2xl p-6">
             <h3 className="text-base font-bold mb-4 pb-3 border-b border-gray-100 flex items-center gap-2">
               <Clock className="size-5 text-primary" /> Opening Hours
             </h3>
@@ -117,13 +117,13 @@ export function StorePage() {
             <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100 border border-gray-200 w-fit">
               <button
                 onClick={() => setTab('products')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${tab === 'products' ? 'bg-white shadow-xs text-gray-900' : 'text-gray-600'}`}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${tab === 'products' ? 'bg-surface shadow-xs text-gray-900' : 'text-gray-600 hover:text-gray-800'}`}
               >
                 <Package className="size-3.5" /> Products
               </button>
               <button
                 onClick={() => setTab('services')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${tab === 'services' ? 'bg-white shadow-xs text-gray-900' : 'text-gray-600'}`}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${tab === 'services' ? 'bg-surface shadow-xs text-gray-900' : 'text-gray-600 hover:text-gray-800'}`}
               >
                 <Sparkles className="size-3.5" /> Services
               </button>
@@ -135,7 +135,7 @@ export function StorePage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={`Search ${tab}…`}
-                className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full pl-9 pr-3 py-2 text-xs bg-surface border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
               />
             </div>
           </div>
@@ -150,12 +150,12 @@ export function StorePage() {
                   const isOut = p.availability === 'out_of_stock';
                   const inCart = lines.find((l) => l.product.id === p.id)?.quantity ?? 0;
                   return (
-                    <div key={p.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-col">
+                    <div key={p.id} className="bg-surface border border-gray-200 rounded-2xl overflow-hidden flex flex-col">
                       <div className="relative aspect-4/3 bg-gray-100">
                         {p.imageUrl && <img src={p.imageUrl} alt={p.name} className="size-full object-cover" loading="lazy" />}
                         <span
                           className={`absolute top-2 right-2 text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                            isOut ? 'bg-rose-500 text-white' : p.availability === 'low_stock' ? 'bg-amber-400 text-gray-900' : 'bg-emerald-500 text-white'
+                            isOut ? 'bg-rose-500 text-white' : p.availability === 'low_stock' ? 'bg-amber-400 text-black' : 'bg-emerald-500 text-white'
                           }`}
                         >
                           {isOut ? 'Out of stock' : p.availability === 'low_stock' ? 'Low stock' : 'In stock'}
@@ -197,7 +197,7 @@ export function StorePage() {
             servicesQuery.data?.items.length ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {servicesQuery.data.items.map((s) => (
-                  <div key={s.id} className="bg-white border border-gray-200 rounded-2xl p-4 flex gap-4">
+                  <div key={s.id} className="bg-surface border border-gray-200 rounded-2xl p-4 flex gap-4">
                     {s.imageUrl && <img src={s.imageUrl} alt={s.name} className="size-16 rounded-xl object-cover bg-gray-100 shrink-0" />}
                     <div className="flex-1">
                       <span className="text-[10px] font-bold text-gray-400 uppercase">{s.category}</span>
