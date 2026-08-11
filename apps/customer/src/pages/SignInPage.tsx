@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { authErrorMessage } from '../lib/authErrors';
 import { auth } from '../lib/firebase';
 import { env } from '../lib/env';
+import { isValidEmail } from '../lib/validation';
 
 type Method = 'email' | 'phone';
 
@@ -21,6 +22,10 @@ function EmailSignIn() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
     setSubmitting(true);
     try {
       await signInWithEmail(email.trim(), password);

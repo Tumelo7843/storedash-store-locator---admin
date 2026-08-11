@@ -8,6 +8,7 @@ import { AccountPage } from './pages/AccountPage';
 import { AdminsPage } from './pages/AdminsPage';
 import { ApplicationsPage } from './pages/ApplicationsPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { LoginPage } from './pages/LoginPage';
 import { NewStorePage } from './pages/NewStorePage';
 import { OrderDetailPage } from './pages/OrderDetailPage';
@@ -41,6 +42,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/" element={<RequireAuth><DashboardPage /></RequireAuth>} />
       <Route path="/products" element={<RequireAuth><ProductsPage /></RequireAuth>} />
       <Route path="/services" element={<RequireAuth><ServicesPage /></RequireAuth>} />

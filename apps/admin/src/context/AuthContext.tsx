@@ -2,11 +2,12 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut as firebaseSignOut,
   type User,
 } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { auth } from '../lib/firebase';
+import { auth, googleAuthProvider } from '../lib/firebase';
 import { getMe, syncProfile, type ManagedProfile } from '../lib/api';
 
 interface AuthContextValue {
@@ -21,6 +22,12 @@ interface AuthContextValue {
   // API call 403s via requireAuth) — this is UX only.
   isAuthorized: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  // Google is offered as an ALTERNATIVE to email+password (not a replacement
+  // for it) purely so an account originally created via Google — e.g. this
+  // project's first Super Admin — can still sign in here. It grants nothing
+  // by itself: isAuthorized below still comes from the backend-verified role,
+  // computed identically regardless of which provider produced the token.
+  signInWithGoogle: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -58,6 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
+  const signInWithGoogle = async () => {
+    await signInWithPopup(auth, googleAuthProvider);
+  };
+
   const sendPasswordReset = async (email: string) => {
     await sendPasswordResetEmail(auth, email);
   };
@@ -70,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ firebaseUser, profile, loading, isAuthorized, signInWithEmail, sendPasswordReset, signOut, refreshProfile: loadProfile }}
+      value={{ firebaseUser, profile, loading, isAuthorized, signInWithEmail, signInWithGoogle, sendPasswordReset, signOut, refreshProfile: loadProfile }}
     >
       {children}
     </AuthContext.Provider>

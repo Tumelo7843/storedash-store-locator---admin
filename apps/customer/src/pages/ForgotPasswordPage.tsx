@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AuthCard, FormError, FormSuccess } from '../components/AuthCard';
 import { useAuth } from '../context/AuthContext';
 import { authErrorMessage } from '../lib/authErrors';
+import { isValidEmail } from '../lib/validation';
 
 export function ForgotPasswordPage() {
   const { sendPasswordReset } = useAuth();
@@ -14,6 +15,10 @@ export function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
     setSubmitting(true);
     try {
       await sendPasswordReset(email.trim());

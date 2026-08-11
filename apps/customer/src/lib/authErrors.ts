@@ -32,6 +32,12 @@ export function authErrorMessage(err: unknown): string {
       return 'That code has expired. Request a new one.';
     case 'auth/missing-password':
       return 'Please enter a password.';
+    case 'auth/requires-recent-login':
+      return 'For your security, please re-enter your password (or sign in with Google again) to continue.';
+    case 'auth/operation-not-allowed':
+      return 'This sign-in method is not enabled for this project yet.';
+    case 'auth/sms-region-not-enabled':
+      return "SMS sign-in isn't enabled for this phone number's region yet — this is a Firebase Console setting, not something you can fix here. Try email or Google sign-in instead, or contact support.";
     default:
       return (err as Error)?.message?.replace(/^Firebase:\s*/, '').replace(/\s*\(auth\/[\w-]+\)\.?$/, '') || 'Something went wrong. Please try again.';
   }

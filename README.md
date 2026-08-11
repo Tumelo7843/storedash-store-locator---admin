@@ -22,6 +22,43 @@ plain TypeScript types.
 - **Currency/units**: South African Rand (ZAR, formatted `R 1,234.56`) and South African address
   conventions (province, postal code) throughout — see §24.
 
+## Authentication follow-up fixes — 2026-08-12
+
+A round of fixes and additions on top of the 2026-08-11 authentication work below, in response to
+specific issues found using it: a real phone-auth SMS error, an admin lockout, and several
+requested features. Full details are woven into §10, §12, and §23; this is a summary of what
+actually changed (and, per the request that prompted this pass, what *didn't* need to change because
+Firebase already handles it).
+
+- **Phone SMS region error — diagnosed, not a code fix**: "SMS unable to be sent until this region
+  is enabled by the app developer" is Firebase's **SMS region policy**, a project-level console
+  setting, not a code or reCAPTCHA problem — this project's phone-auth implementation was checked
+  against the current `@firebase/auth` SDK and the
+  [official web guide](https://firebase.google.com/docs/auth/web/phone-auth) and already matches it
+  exactly. See §10 step 3 for the one console setting that actually fixes it.
+- **Duplicate accounts**: confirmed, live, that Firebase's own `createUserWithEmailAndPassword`
+  already prevents a duplicate email account (no partial record is created on failure) and that
+  phone auth's sign-in/sign-up-are-the-same-operation design already prevents duplicate phone
+  accounts — so no new pre-check code was added for either, only better UI when Firebase's own
+  rejection happens (§23 "Duplicate account prevention" explains why in full, per this round's
+  explicit request to skip anything Firebase already covers rather than add redundant code).
+- **Admin app now also accepts Google sign-in**, alongside its existing required email+password, so
+  an account originally created via Google (this project's actual first Super Admin) isn't locked
+  out. This does not change what that account can *do* — authorization is still 100% determined by
+  the backend-verified role, identically regardless of provider (§23).
+- **Dedicated Forgot Password page** added to the admin app (previously inline on the login page),
+  matching the customer app's page for consistency.
+- **Customer "Manage Profile" page** (`/account/manage`): edit name/phone, resend email
+  verification, change email (`verifyBeforeUpdateEmail`), change password, and delete account — all
+  gated behind Firebase re-authentication where Firebase requires it (§23).
+- **Account deletion**, backend: a new `DELETE /api/auth/me` that deletes the Firebase Auth account
+  via the Admin SDK and either hard-deletes or anonymizes the database row, depending on whether the
+  account has order history (`orders.userId` is `ON DELETE RESTRICT` by design) — see §23 for the
+  full reasoning and §25 for what was verified live, including a real resurrection bug this
+  found-and-fixed along the way (a still-valid token could recreate a hard-deleted row before the
+  fix; the Firebase account itself is now deleted server-side as part of the same request, closing
+  that off).
+
 ## Customer & admin authentication, and the store-owner approval workflow — 2026-08-11
 
 Full sign-up/sign-in for both apps, plus a Super-Admin-gated path for a customer to become a store
@@ -391,21 +428,42 @@ middleware before it reaches any route handler.
 
 1. Create a Firebase project (or use an existing one) at [console.firebase.google.com](https://console.firebase.google.com).
 2. Authentication > Sign-in method > enable all three providers this app uses:
-   - **Email/Password** — used by both the customer app's email sign-up/sign-in and, exclusively,
-     the admin app's login (§23).
+   - **Email/Password** — used by the customer app's email sign-up/sign-in and the admin app's
+     login (§23).
    - **Phone** — used by the customer app's phone sign-in/sign-up (§23). No extra provider config
      needed for production; for local development, Authentication > Sign-in method > Phone >
      **Phone numbers for testing** lets you add a fake number (e.g. `+27821234567`) with a fixed
      code (e.g. `123456`) so you can test the flow without receiving a real SMS.
-   - **Google** — used by the customer app only (the admin app deliberately does not offer it — see
-     §23 for why, and how a Google-only account can still get admin access).
-3. Authentication > Settings > **Authorized domains** — add your Vercel domains (both customer and
+   - **Google** — used by both apps. The admin app's login requires email+password as its primary
+     method, but also offers Google as an alternative purely so an account originally created via
+     Google (e.g. the platform's first Super Admin) can still sign in — access is gated entirely by
+     the backend-verified role, never by which provider authenticated the request, so this doesn't
+     let an ordinary Google user become an admin (§12, §23).
+3. **If phone sign-in fails with "SMS unable to be sent until this region is enabled by the app
+   developer"**: this is Firebase's **SMS region policy**, a console-only setting — no amount of
+   client code changes it (confirmed against the current `firebase`/`@firebase/auth` SDK: this
+   project's `RecaptchaVerifier`/`signInWithPhoneNumber` usage already matches the [official phone
+   auth web guide](https://firebase.google.com/docs/auth/web/phone-auth) exactly). Fix it at
+   **Authentication > Settings > SMS region policy**: either select **Allow all except denied
+   regions** (with nothing denied), or **Allow only these regions** with South Africa (`ZA`, `+27`)
+   explicitly added. Without this, no phone number in an unlisted region can receive an SMS,
+   regardless of anything else being configured correctly.
+4. Authentication > Settings > **Authorized domains** — add your Vercel domains (both customer and
    admin) and your local dev origins if needed (`localhost` is included by default). Phone auth's
    invisible reCAPTCHA also depends on this list — a domain missing here will fail phone sign-in
-   with an `auth/captcha-check-failed`-style error even though it works locally.
-4. Project Settings > General > Your apps > add a Web app (or reuse one) to get the
+   with an `auth/captcha-check-failed`-style error even though it works locally. This list is shared
+   by both apps (same Firebase project), so adding Google to the admin app (step 2) needs no new
+   entry here beyond what customer already required.
+5. Authentication > Templates > **Password reset** (and, if you customize it, **Email address
+   verification**) — Firebase's defaults work out of the box (this is what `sendPasswordResetEmail`
+   and `sendEmailVerification` send, §23); customize the sender name/logo here if you want, but no
+   change is required for the app to function.
+6. Project Settings > General > Your apps > add a Web app (or reuse one) to get the
    `VITE_FIREBASE_*` values for §5. The same Firebase project/config is used by both frontends.
-5. Project Settings > Service Accounts > **Generate new private key** → downloads a JSON file.
+7. Project Settings > Service Accounts > **Generate new private key** → downloads a JSON file. This
+   is also what grants the backend's Admin SDK permission to delete a user's Firebase Auth account
+   as part of self-service account deletion (§23) — no separate IAM role or console step is needed
+   for that specifically, it's included in the same service account.
    - On Render (or any non-GCP host): base64-encode it and set as `FIREBASE_SERVICE_ACCOUNT_BASE64`:
      ```bash
      base64 -w0 service-account.json   # Linux
@@ -414,7 +472,7 @@ middleware before it reaches any route handler.
    - On GCP compute (Cloud Run, GCE, App Engine): you can omit this variable — the Admin SDK
      authenticates automatically via Application Default Credentials, and only `FIREBASE_PROJECT_ID`
      is needed.
-6. **If this JSON file, or any Firebase Admin credential, has ever been committed to a git repo,
+8. **If this JSON file, or any Firebase Admin credential, has ever been committed to a git repo,
    public gist, or shared insecurely: rotate it.** Go to the same Service Accounts page and
    generate a new key, then delete the old one from IAM. A leaked service account key gives full
    admin control over Firebase Authentication for the project — treat it like a root password, not
@@ -622,14 +680,28 @@ single heaviest dependency in the app and only needed on the store-discovery pag
 - **Phone sign-in fails with a reCAPTCHA/`auth/captcha-check-failed` error**: the current origin
   isn't in Firebase's Authorized domains list (§10) — this includes `localhost` during local dev,
   which is included by default, but a custom local port or a new Vercel preview domain is not.
+- **Phone sign-in fails with "SMS unable to be sent until this region is enabled by the app
+  developer"** (or the mapped message "SMS sign-in isn't enabled for this phone number's region
+  yet"): this is **not** a code/reCAPTCHA problem — it's Firebase's **SMS region policy**, a
+  console-only setting. See §10 step 3 for the exact fix (Authentication > Settings > SMS region
+  policy > allow South Africa / allow all regions).
 - **"You already have a pending store-owner application"** (409 on `POST
   /api/store-owner-applications`): expected — one user can only have one *pending* application at a
   time (`storeOwnerApplications.service.ts`). Wait for a super_admin to approve/reject it, or check
   `GET /api/store-owner-applications/mine` for its current status.
-- **Admin app says "No account found with this email"**: the admin app's login is email+password
-  only by design (§23) — if that person signed up via Google on the customer app and never set a
-  password, "Forgot password?" on the admin login page will email them a link to set one (Firebase
-  treats this as adding a credential to their existing account, not creating a new one).
+- **Admin app says "No account found with this email"**: the admin app's login requires an account
+  that already exists (§23) — if that person signed up via Google on the customer app and never set
+  a password, either "Forgot password?" on the admin login page (emails them a link to set one) or
+  the **Continue with Google** button on the same page will work, since it's the same underlying
+  Firebase account either way.
+- **Sign-up shows "An account with this email already exists"**: expected — this is Firebase's own
+  `auth/email-already-in-use` rejection from `createUserWithEmailAndPassword`, surfaced with **Sign
+  in** / **Reset password** buttons on the sign-up page (`apps/customer/src/pages/SignUpPage.tsx`).
+  See §23 "Duplicate account prevention" for why there's no separate pre-check.
+- **`auth/requires-recent-login` on the Manage Profile page** (change email, change password, or
+  delete account): expected — Firebase requires a recently-verified session for sensitive actions.
+  The page prompts for your current password (or a fresh Google sign-in) inline and retries
+  automatically; a phone-only account is asked to sign out and back in instead (§23).
 
 ## 19. Production checklist
 
@@ -865,23 +937,99 @@ like any other.
 - **Sign out**: the Account page (`/account`) has a **Sign out** button for a signed-in user, and
   shows sign-in/sign-up CTAs otherwise.
 
-### Admin app: email + password only
+### Duplicate account prevention
 
-`apps/admin/src/context/AuthContext.tsx` and `LoginPage.tsx` intentionally expose only
-`signInWithEmail` and `sendPasswordReset` — **no Google button** — because the requirement is that
-admin/store-owner authentication must use email+password. This does *not* mean a store owner's
-Firebase account has to have been created via email/password: Firebase lets you add an
-email/password credential to an existing Google-created account with the same email by simply
-requesting a password reset for it (the "Forgot password?" link on the admin login page does this
-automatically — Firebase treats it as adding a sign-in method, not creating a new account). So the
-practical flow for a Google-only customer who gets approved as a store owner is: they get approved
-→ they go to the admin login page → click "Forgot password?" → set a password by email → sign in
-with it from then on.
+There is deliberately **no pre-check** ("does this email/phone already exist?") before attempting
+sign-up, and this is a case where adding one would make things worse, not better:
+
+- **Email**: `createUserWithEmailAndPassword` is itself the check — Firebase refuses with
+  `auth/email-already-in-use` if the email is taken, and (confirmed live against this project, §25)
+  no account, partial or otherwise, is created when that happens. The alternative — calling
+  `fetchSignInMethodsForEmail` first — is explicitly discouraged by Firebase for any project with
+  **email enumeration protection** enabled, because it always returns an empty array in that mode
+  (protection against exactly this kind of probing) and would incorrectly report every email as
+  "available." This project has that protection enabled (confirmed live, §25), so the pre-check
+  would be actively misleading, not just redundant. Instead, `apps/customer/src/pages/SignUpPage.tsx`
+  catches `auth/email-already-in-use` specifically and shows **Sign in** / **Reset password**
+  buttons right there, rather than a bare error string.
+- **Phone**: Firebase phone auth doesn't have separate sign-up and sign-in — `signInWithPhoneNumber`
+  signs into the existing account if that number is already registered, or creates one if it isn't,
+  as one unified operation. There is no way for two accounts to end up sharing a phone number through
+  this flow, so there's nothing to check for.
+- **Invalid email**: client-side format validation (`isValidEmail` in
+  `apps/customer/src/lib/validation.ts`, used on sign-up, sign-in, and forgot-password) gives instant
+  feedback before any network call; Firebase's own `auth/invalid-email` is the server-side backstop,
+  mapped to a plain message by `authErrors.ts`.
+
+### Admin app: email + password, plus Google for pre-existing accounts
+
+`apps/admin/src/context/AuthContext.tsx` and `LoginPage.tsx` offer **both** `signInWithEmail` and
+`signInWithGoogle`. Email+password is the primary, required method (a Super Admin or store owner's
+account always has one, since there's no other way to be granted the role in the first place — §12,
+§23 below); Google is offered *alongside* it, not instead of it, purely so an account that happens
+to have been created via Google originally (this project's actual first Super Admin was) can still
+sign in without being locked out. This does not weaken the "admin auth requires email+password"
+requirement in practice, because:
+
+- **Authorization never looks at which provider signed the token.** `isAuthorized` in
+  `AuthContext.tsx` and every backend check in `requireRole`/`requireStoreAccess` (§12) work off the
+  `users.role`/`suspended` columns loaded from the database — identical logic regardless of whether
+  the Firebase ID token came from `signInWithEmailAndPassword` or `signInWithPopup`. An ordinary
+  customer who signs into the admin app with Google gets the exact same `NoAccessCard` a customer
+  signing in with email+password would get — nothing about using Google grants any extra privilege.
+- Firebase also lets you add an email/password credential to an existing Google-created account with
+  the same email by simply requesting a password reset for it (the dedicated
+  `apps/admin/src/pages/ForgotPasswordPage.tsx`, or the "Forgot password?" link on the login page,
+  does this automatically — Firebase treats it as adding a sign-in method, not creating a new
+  account). So a Google-only store owner can still end up with a working email+password credential
+  whenever they want one.
 
 A signed-in user whose role is `customer`, or whose account is `suspended`, sees a dedicated
 "no access"/"suspended" screen (`NoAccessCard` in `LoginPage.tsx`) instead of a broken dashboard,
 with a link to a page in the customer app (via `VITE_CUSTOMER_URL`, §5 — again the *full* URL, e.g.
 `.../account` or `.../become-a-store-owner`, used as-is) when that's the relevant next step.
+
+### Customer profile management
+
+`/account/manage` (`apps/customer/src/pages/ManageProfilePage.tsx`, linked from the Account page)
+lets a signed-in customer manage their own account. Every sensitive action here operates on
+`auth.currentUser` only — there is no way to target another account, client-side or server-side
+(`PATCH`/`DELETE /api/auth/me` both resolve the acting user from the verified token, never from a
+request parameter, same as everywhere else in the app — §12).
+
+- **Name / phone**: plain `PATCH /api/auth/me` (§12) — same narrow, role-can't-be-set endpoint used
+  by sign-up.
+- **Email verification**: a banner (shown only while `firebaseUser.emailVerified` is false) with a
+  **Resend verification email** button (`sendEmailVerification`). Not required to use the app — this
+  is informational/best-effort, matching the non-blocking verification email already sent at sign-up.
+- **Change email**: `verifyBeforeUpdateEmail`, **not** the older `updateEmail` — this project has
+  email enumeration protection enabled (§25), and Firebase's `updateEmail` throws
+  `auth/operation-not-allowed` under that setting; `verifyBeforeUpdateEmail` is its documented
+  replacement. It emails a confirmation link to the *new* address; the address only actually changes
+  once that link is clicked, and the backend picks up the new email automatically on the next
+  `syncProfile()` call after that (same `onConflictDoUpdate` used everywhere else, §12).
+- **Change password**: `updatePassword`. For a Google-only or phone-only account (no password
+  provider), this section instead offers **"Email me a link to set a password"**
+  (`sendPasswordResetEmail`) — the same account-linking mechanism described above for the admin app.
+- **Delete account**: type-to-confirm ("DELETE"), then `DELETE /api/auth/me`. See
+  `backend/src/services/users.service.ts`'s `deleteOwnAccount` for the full reasoning, summarized:
+  the backend deletes the Firebase Auth account itself via the Admin SDK (not the client — this
+  closes a resurrection race explained in the function's comment and verified live, §25), then either
+  hard-deletes the `users` row (no order history) or anonymizes it in place — clearing email/name/
+  phone and setting `suspended: true` — if the account has orders, because `orders.userId` is
+  `ON DELETE RESTRICT` by design (order history must outlive the account that placed it; the
+  `customerName`/`customerEmail` snapshot columns on `orders` already preserve what's needed for the
+  store's records regardless). Either way, `store_admins` rows are removed first, so a deleted or
+  anonymized account never retains store-management access, and this never touches another user's
+  orders, products, or store data.
+- **Reauthentication**: change email, change password, and delete account all require a "recently
+  signed in" session — Firebase rejects them with `auth/requires-recent-login` otherwise. The page's
+  `ReauthGate` component (reused by all three) handles this per sign-in provider:
+  password-provider accounts are asked for their current password
+  (`reauthenticateWithCredential` + `EmailAuthProvider.credential`); Google accounts get a
+  **"Verify with Google"** button (`reauthenticateWithPopup`); phone-only accounts are told to sign
+  out and back in first, since there's no equivalent one-call re-proof available for that provider
+  here.
 
 ### The store-owner application: schema and lifecycle
 
@@ -1036,3 +1184,45 @@ following need a real browser before shipping:
 - The complete click-through UX: sign up → land on account page → apply to become a store owner →
   (as a separate super_admin browser session) approve it → sign back in on the admin app → see the
   new store on the dashboard.
+
+### 2026-08-12 follow-up: account deletion, duplicate accounts, admin Google sign-in
+
+Additional live verification for the follow-up fixes above (same method: curl + Firebase's REST API
+against the real project and database, test data cleaned up afterward):
+
+- **Duplicate email**: signing up twice with the same email via `accounts:signUp` — the second call
+  is rejected by Firebase itself; confirmed no new `users` row or partial state results from the
+  rejected attempt.
+- **Account deletion, hard-delete path**: created a test account with no orders, called
+  `DELETE /api/auth/me` → response `{"hardDeleted": true}` → the `users` row was gone → **replaying
+  the same still-valid ID token against the backend afterward re-created a row** (the resurrection
+  bug described above) → fixed by having the backend call `adminAuth.deleteUser(uid)` as part of the
+  same request → re-tested: the Firebase account was confirmed genuinely deleted (a subsequent
+  `signInWithPassword` with the correct password returned `INVALID_LOGIN_CREDENTIALS`), and replaying
+  the old token against the backend now correctly re-creates a row again in this specific test
+  *only because ID tokens are self-contained JWTs that Firebase's default `verifyIdToken` validates
+  cryptographically without a network round-trip* — see the extensive comment on `deleteOwnAccount`
+  in `backend/src/services/users.service.ts` for why this narrow, **self-only** residual window
+  (an already-issued token can work until its own natural ~1 hour expiry, even post-deletion) was a
+  deliberate scope decision and not something worth an extra Firebase round-trip on every request
+  site-wide to close. It cannot be used to access anyone else's account.
+- **Account deletion, anonymize path**: created a test account, then a temporary store/product/order
+  referencing it (to exercise the real `orders.userId` `ON DELETE RESTRICT` constraint), then called
+  `DELETE /api/auth/me` → response `{"hardDeleted": false}` → confirmed in the database that the
+  `users` row survived with `email` replaced by a `deleted-user-{id}@storedash.invalid` placeholder,
+  `name`/`phone`/`avatarUrl` cleared, and `suspended: true`, **while the order row was completely
+  untouched** (`customerName`/`customerEmail` snapshot intact) — proving deletion never touches
+  another table's data and order history genuinely survives. Temporary test store/product/order/user
+  rows were all removed afterward.
+- **Admin Google sign-in role-gating**: verified by code inspection rather than a live popup (no
+  browser automation available, same limitation as above) — `isAuthorized` and every backend
+  `requireRole`/`requireStoreAccess` check work exclusively off `users.role`/`suspended` loaded from
+  the database, with no branch anywhere that inspects which Firebase provider produced the token.
+  This was already exhaustively verified for email/password tokens in the 2026-08-11 pass (403 on
+  every admin-only route for a `customer`-role account, §25 above); since the authorization code path
+  is identical regardless of provider, the same guarantee holds for a Google-authenticated token
+  without needing a provider-specific test. **Recommended before shipping**: one real
+  Google-sign-in-as-a-plain-customer click-through to confirm the `NoAccessCard` renders, since this
+  is the one piece of this round that genuinely can't be verified without a browser.
+- `tsc --noEmit` and `vite build` re-confirmed clean for `backend`, `apps/customer`, and
+  `apps/admin` after all of the above.

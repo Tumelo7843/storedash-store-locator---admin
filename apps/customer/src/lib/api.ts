@@ -99,6 +99,11 @@ export async function updateMyProfile(data: { name?: string; phone?: string }): 
   return profile;
 }
 
+export async function deleteMyAccount(): Promise<{ hardDeleted: boolean }> {
+  const { data } = await request<{ data: { hardDeleted: boolean } }>('/api/auth/me', { method: 'DELETE' }, true);
+  return data;
+}
+
 export interface StoreOwnerApplicationInput {
   businessName: string;
   category: string;

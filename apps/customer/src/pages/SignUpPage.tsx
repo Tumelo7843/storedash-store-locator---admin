@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthCard, Divider, FormError, GoogleButton } from '../components/AuthCard';
 import { useAuth } from '../context/AuthContext';
 import { authErrorMessage } from '../lib/authErrors';
-import { passwordError, passwordStrength } from '../lib/validation';
+import { isValidEmail, passwordError, passwordStrength } from '../lib/validation';
 
 const STRENGTH_STYLES: Record<ReturnType<typeof passwordStrength>, { width: string; color: string; label: string }> = {
   weak: { width: 'w-1/3', color: 'bg-rose-500', label: 'Weak' },
@@ -18,6 +18,7 @@ export function SignUpPage() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [emailInUse, setEmailInUse] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
@@ -26,8 +27,10 @@ export function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setEmailInUse(false);
 
     if (!form.name.trim()) return setError('Please enter your name.');
+    if (!isValidEmail(form.email)) return setError('Please enter a valid email address.');
     const pwError = passwordError(form.password);
     if (pwError) return setError(pwError);
     if (form.password !== form.confirmPassword) return setError('Passwords do not match.');
@@ -37,7 +40,15 @@ export function SignUpPage() {
       await signUpWithEmail({ name: form.name.trim(), email: form.email.trim(), password: form.password, phone: form.phone.trim() || undefined });
       navigate('/account', { replace: true });
     } catch (err) {
-      setError(authErrorMessage(err));
+      // Firebase's own createUserWithEmailAndPassword is the duplicate-account
+      // check — auth/email-already-in-use means it refused to create a second
+      // account, not that ours failed to catch one. Give the user a way
+      // forward instead of just an error string.
+      if ((err as { code?: string })?.code === 'auth/email-already-in-use') {
+        setEmailInUse(true);
+      } else {
+        setError(authErrorMessage(err));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -70,6 +81,19 @@ export function SignUpPage() {
       }
     >
       {error && <FormError message={error} />}
+      {emailInUse && (
+        <div className="text-xs font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2.5 flex flex-col gap-2 text-center">
+          <span>An account with {form.email.trim()} already exists.</span>
+          <div className="flex items-center justify-center gap-2">
+            <Link to="/sign-in" className="px-3 py-1.5 rounded-lg bg-primary text-white font-bold">
+              Sign in
+            </Link>
+            <Link to="/forgot-password" className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-900 font-bold">
+              Reset password
+            </Link>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
         <div>

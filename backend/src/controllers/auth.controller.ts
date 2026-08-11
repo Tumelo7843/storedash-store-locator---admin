@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 import type { AuthedRequest } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { getOrCreateUser, updateOwnProfile } from '../services/users.service.js';
+import { deleteOwnAccount, getOrCreateUser, updateOwnProfile } from '../services/users.service.js';
 import { getStoreIdsManagedByUser } from '../services/storeAccess.service.js';
 import { updateProfileSchema } from '../validators/auth.validator.js';
 import type { UserProfile } from '@storedash/shared';
@@ -42,4 +42,12 @@ export const updateProfile = asyncHandler(async (req: AuthedRequest, res: Respon
   const body = updateProfileSchema.parse(req.body);
   const user = await updateOwnProfile(req.authUser!.id, body);
   res.json({ data: toProfile(user) });
+});
+
+// Deletes the caller's own account only — req.authUser.id comes from the
+// verified token, never from a request parameter, so there is no way to
+// pass another user's id here.
+export const deleteAccount = asyncHandler(async (req: AuthedRequest, res: Response) => {
+  const result = await deleteOwnAccount(req.authUser!.id, req.authUser!.uid);
+  res.json({ data: result });
 });
