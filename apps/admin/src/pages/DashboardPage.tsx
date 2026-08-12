@@ -36,7 +36,7 @@ export function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl p-6">
+        <div className="lg:col-span-2 bg-surface border border-gray-200 rounded-xl p-6">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Completed Sales — Last 30 Days</h2>
           {metrics.salesByDay.length === 0 ? (
             <EmptyState title="No completed orders yet" description="Sales will appear here once orders are marked completed." />
@@ -64,7 +64,7 @@ export function DashboardPage() {
           )}
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
+        <div className="bg-surface border border-gray-200 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-gray-900">Recent Orders</h2>
             <Link to="/orders" className="text-xs font-bold text-primary hover:underline">
@@ -100,7 +100,7 @@ function MetricCard({ icon: Icon, label, value, accent }: { icon: typeof DollarS
     emerald: 'bg-emerald-500/10 text-emerald-500',
   };
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-col justify-between">
+    <div className="bg-surface border border-gray-200 rounded-xl p-5 flex flex-col justify-between">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">{label}</span>
         <div className={`p-2 rounded-lg ${accents[accent]}`}>

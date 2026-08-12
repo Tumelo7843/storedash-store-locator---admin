@@ -33,7 +33,7 @@ function OwnerRow({ owner, onChanged }: { owner: StoreOwnerSummary; onChanged: (
       <div className="min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-bold text-gray-900">{owner.name || owner.email}</p>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">{ROLE_LABEL[owner.role]}</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">{ROLE_LABEL[owner.role]}</span>
           {owner.suspended && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">Suspended</span>}
         </div>
         <p className="text-xs text-gray-500">{owner.email}</p>
@@ -87,7 +87,7 @@ export function StoreOwnersPage() {
       {!query.loading &&
         !query.error &&
         (query.data?.length ? (
-          <div className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100">
+          <div className="bg-surface border border-gray-200 rounded-2xl divide-y divide-gray-100">
             {query.data.map((owner) => (
               <OwnerRow key={owner.id} owner={owner} onChanged={query.reload} />
             ))}

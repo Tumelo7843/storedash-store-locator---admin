@@ -46,7 +46,7 @@ export function AdminsPage() {
         <p className="text-sm text-gray-500 mt-1">People who can manage {currentStore.name}</p>
       </div>
 
-      <form onSubmit={handleAdd} className="bg-white border border-gray-200 rounded-2xl p-5 flex flex-col gap-3">
+      <form onSubmit={handleAdd} className="bg-surface border border-gray-200 rounded-2xl p-5 flex flex-col gap-3">
         <label className="text-xs font-semibold text-gray-700">Add an admin by email</label>
         <p className="text-xs text-gray-400 -mt-2">The person must have signed in to StoreDash (as a customer or admin) at least once before you can grant them access.</p>
         <div className="flex gap-2">
@@ -70,7 +70,7 @@ export function AdminsPage() {
 
       {!query.loading && !query.error && (
         query.data?.length ? (
-          <div className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100">
+          <div className="bg-surface border border-gray-200 rounded-2xl divide-y divide-gray-100">
             {query.data.map((admin) => (
               <div key={admin.id} className="p-4 flex items-center justify-between">
                 <div>

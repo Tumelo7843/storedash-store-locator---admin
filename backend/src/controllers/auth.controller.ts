@@ -16,6 +16,7 @@ function toProfile(user: Awaited<ReturnType<typeof getOrCreateUser>>): UserProfi
     avatarUrl: user.avatarUrl,
     role: user.role,
     suspended: user.suspended,
+    showApprovalBadges: user.showApprovalBadges,
     createdAt: user.createdAt.toISOString(),
   };
 }

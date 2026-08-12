@@ -1,6 +1,7 @@
 import { LogIn, MapPin, Receipt, ShoppingCart, Store } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
@@ -41,6 +42,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <nav className="flex items-center gap-1.5">
             <NavLink to="/" icon={MapPin} label="Discover" />
             <NavLink to="/orders" icon={Receipt} label="Orders" />
+            <ThemeToggle />
             <Link
               to="/cart"
               className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"

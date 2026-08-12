@@ -12,7 +12,7 @@ function NoAccessCard() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-md p-8 text-center flex flex-col items-center gap-4">
+      <div className="bg-surface rounded-2xl shadow-xl border border-gray-200 w-full max-w-md p-8 text-center flex flex-col items-center gap-4">
         <div className="size-14 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center">
           <AlertCircle className="size-7" />
         </div>
@@ -84,8 +84,8 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-md p-8 flex flex-col items-center gap-5">
-        <div className="size-16 rounded-full bg-blue-50 text-primary flex items-center justify-center">
+      <div className="bg-surface rounded-2xl shadow-xl border border-gray-200 w-full max-w-md p-8 flex flex-col items-center gap-5">
+        <div className="size-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
           <ShieldCheck className="size-8" />
         </div>
         <div className="text-center">
@@ -135,7 +135,7 @@ export function LoginPage() {
           type="button"
           onClick={handleGoogle}
           disabled={googleSubmitting || loading}
-          className="w-full py-2.5 px-4 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-800 font-bold text-sm shadow-sm flex items-center justify-center gap-3 disabled:opacity-50"
+          className="w-full py-2.5 px-4 rounded-xl border border-gray-300 bg-surface hover:bg-gray-50 text-gray-800 font-bold text-sm shadow-sm flex items-center justify-center gap-3 disabled:opacity-50"
         >
           <svg className="size-5" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

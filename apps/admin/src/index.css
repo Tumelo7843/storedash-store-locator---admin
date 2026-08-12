@@ -1,11 +1,160 @@
 @import "tailwindcss";
 
-@theme {
-  --color-primary: #2563eb;
+/*
+ * StoreDash Admin visual identity: navy sidebar, blue primary — the sidebar's
+ * existing look (bg-[#101922], blue accents) is the design reference for the
+ * whole app, extended app-wide rather than staying sidebar-only.
+ *
+ * Theming mechanism: every color Tailwind utility below (`--color-*` inside
+ * @theme) points at a plain CSS custom property of the same short name
+ * (`--gray-50`, `--primary`, etc.), defined once for light mode on `:root`
+ * and re-defined for dark mode under `[data-theme="dark"]`. Existing classes
+ * like `bg-gray-50`, `text-gray-900`, `bg-primary` therefore become theme-
+ * reactive automatically — no `dark:` variant classes needed anywhere in the
+ * app, and no component changes required beyond the sidebar's few literal
+ * hex/color values (see AdminLayout.tsx). `@theme inline` is required (not
+ * plain `@theme`) because these values are references, not literals — see
+ * Tailwind v4's CSS-variable-based theming docs.
+ *
+ * Light mode is NOT dark mode inverted — it's the app's current light look
+ * (white cards, gray-50 page background) formalized into tokens. Dark mode
+ * matches the sidebar's existing navy/blue palette, extended to page
+ * background, cards, borders, and status colors.
+ */
+@theme inline {
+  --color-gray-50: var(--gray-50);
+  --color-gray-100: var(--gray-100);
+  --color-gray-200: var(--gray-200);
+  --color-gray-300: var(--gray-300);
+  --color-gray-400: var(--gray-400);
+  --color-gray-500: var(--gray-500);
+  --color-gray-600: var(--gray-600);
+  --color-gray-700: var(--gray-700);
+  --color-gray-800: var(--gray-800);
+  --color-gray-900: var(--gray-900);
+
+  /* Card/panel background — distinct from the page background so cards
+     visually "pop" (subtly in light mode, more so in dark mode). */
+  --color-surface: var(--surface);
+
+  /* Sidebar/mobile header — its own tokens because it doesn't sit at either
+     end of the gray scale in either theme (see :root/[data-theme] below). */
+  --color-nav: var(--nav);
+  --color-nav-border: var(--nav-border);
+  --color-nav-active: var(--nav-active);
+
+  --color-primary: var(--primary);
+
+  --color-rose-50: var(--rose-50);
+  --color-rose-100: var(--rose-100);
+  --color-rose-200: var(--rose-200);
+  --color-rose-600: var(--rose-600);
+  --color-rose-700: var(--rose-700);
+
+  --color-emerald-50: var(--emerald-50);
+  --color-emerald-100: var(--emerald-100);
+  --color-emerald-200: var(--emerald-200);
+  --color-emerald-600: var(--emerald-600);
+  --color-emerald-700: var(--emerald-700);
+
+  --color-amber-50: var(--amber-50);
+  --color-amber-200: var(--amber-200);
+  --color-amber-700: var(--amber-700);
+}
+
+:root {
+  color-scheme: light;
+
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  --surface: #ffffff;
+
+  --nav: #ffffff;
+  --nav-border: #e5e7eb;
+  --nav-active: rgba(37, 99, 235, 0.1);
+
+  --primary: #2563eb;
+
+  --rose-50: #fff1f2;
+  --rose-100: #ffe4e6;
+  --rose-200: #fecdd3;
+  --rose-600: #e11d48;
+  --rose-700: #be123c;
+
+  --emerald-50: #ecfdf5;
+  --emerald-100: #d1fae5;
+  --emerald-200: #a7f3d0;
+  --emerald-600: #059669;
+  --emerald-700: #047857;
+
+  --amber-50: #fffbeb;
+  --amber-200: #fde68a;
+  --amber-700: #b45309;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* 50 = deepest page background (matches the sidebar's current #101922),
+     900 = near-white heading text — same "50=bg, 900=text" convention as
+     light mode, just inverted in luminance, so no component needs to know
+     which theme is active. */
+  --gray-50: #0b1220;
+  --gray-100: #111a2b;
+  --gray-200: #22314a;
+  --gray-300: #2d3f5c;
+  --gray-400: #64748b;
+  --gray-500: #94a3b8;
+  --gray-600: #b6c2d1;
+  --gray-700: #d3dae3;
+  --gray-800: #e7ebf0;
+  --gray-900: #f8fafc;
+
+  --surface: #141d2e;
+
+  --nav: #0b1220;
+  --nav-border: #1f2a3a;
+  --nav-active: rgba(59, 130, 246, 0.18);
+
+  /* Slightly brighter than light mode's #2563eb for sufficient contrast on
+     dark backgrounds (same brand blue, just tuned for luminance). */
+  --primary: #3b82f6;
+
+  /* Status colors: translucent tints of the mid-tone (not the pale -50/-100
+     Tailwind shades, which read as jarring light boxes on a dark page), text
+     brightened for contrast — same idea as apps/customer's dark palette. */
+  --rose-50: rgba(244, 63, 94, 0.12);
+  --rose-100: rgba(244, 63, 94, 0.18);
+  --rose-200: rgba(244, 63, 94, 0.32);
+  --rose-600: #fb7185;
+  --rose-700: #fda4af;
+
+  --emerald-50: rgba(16, 185, 129, 0.12);
+  --emerald-100: rgba(16, 185, 129, 0.18);
+  --emerald-200: rgba(16, 185, 129, 0.32);
+  --emerald-600: #34d399;
+  --emerald-700: #6ee7b7;
+
+  --amber-50: rgba(245, 158, 11, 0.12);
+  --amber-200: rgba(245, 158, 11, 0.32);
+  --amber-700: #fbbf24;
+}
+
+body {
+  background-color: var(--color-gray-50);
 }
 
 @layer components {
   .input {
-    @apply w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary;
+    @apply w-full px-3 py-2 text-sm bg-surface border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary;
   }
 }

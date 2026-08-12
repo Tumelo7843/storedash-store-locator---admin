@@ -22,6 +22,20 @@ plain TypeScript types.
 - **Currency/units**: South African Rand (ZAR, formatted `R 1,234.56`) and South African address
   conventions (province, postal code) throughout — see §24.
 
+## Theme system and Settings pages — 2026-08-13
+
+Full reference: §27. Summary: both apps now have a real light/dark theme toggle (previously the
+admin app's page content was permanently light with only its sidebar hardcoded dark, and the
+customer app was permanently dark with no light mode at all) plus a new, role-aware **Settings**
+page in each app. Implementation is CSS-variable-driven — see §27 for the mechanism — so existing
+component code needed almost no per-component `dark:` classes. Preference is persisted to
+`localStorage` per app/device, not synced to the backend. New `users.show_approval_badges` column
+(migration `backend/drizzle/0003_premium_jack_flag.sql`) is the one genuinely new *server-side*
+setting that came out of this — a real, working toggle for the admin app's pending-request sidebar
+badges — everything else in Settings is either client-only (theme) or links out to
+already-existing, already-tested flows (Manage Profile, Store Settings) rather than duplicating
+them. The admin app's old bare `/account` page was retired into the new Settings page's Account tab.
+
 ## Store/product/service approval workflow — 2026-08-12
 
 Full reference: §26. Summary: a `store_admin` can now create their own stores, products, and
@@ -1432,3 +1446,236 @@ The full flow was tested live against this project's real database (not a mock) 
 All test data created during this was deleted afterward (test stores/products/services/orders/
 application, and the test user's role reset to `customer`) — the database was left exactly as it was
 before testing, not just "cleaned up eventually."
+
+## 27. Theming and Settings
+
+### What existed before this
+
+Neither app had any theme *toggle* — `grep`ing the whole repo for `dark:`, `prefers-color-scheme`,
+`ThemeContext`, or `next-themes` returned nothing. What each app had instead:
+
+- **Admin app**: page content was permanently light (`bg-gray-50` page background, `bg-white`
+  cards, standard Tailwind grays) with only the sidebar hardcoded to a dark navy
+  (`bg-[#101922]`, a literal hex with no connection to any token) — a light app with one dark
+  island, not a themeable app.
+- **Customer app**: permanently dark. Its `apps/customer/src/index.css` had already redefined
+  Tailwind's `gray-50`..`gray-900` scale to a fixed charcoal/purple palette (`color-scheme: dark`
+  forced on `:root`) — a clever trick that let every existing `bg-gray-50`/`text-gray-900` class
+  "just work" for a dark look, but with only one palette baked in, not two.
+- Neither app had a Settings page. The admin app's `/account` was read-only (avatar, name, email,
+  role badge, sign out — no editing of anything, even though the backend already supported
+  editing name/phone via `PATCH /api/auth/me`, just with no UI for it). The customer app's
+  `/account/manage` was a full working profile editor (name/phone, email change, password change,
+  delete account) but wasn't organized as "Settings" and had no appearance controls.
+
+### How the theme toggle works
+
+Both apps use the same mechanism, independently implemented (they share no runtime code, only
+TypeScript types):
+
+1. **Tailwind v4 CSS-variable indirection.** Both `index.css` files use `@theme inline` (not plain
+   `@theme`) so each `--color-*` token *points at* a plain CSS custom property of the same short
+   name, instead of holding a literal value directly:
+   ```css
+   @theme inline {
+     --color-gray-900: var(--gray-900);
+     --color-primary: var(--primary);
+     /* … */
+   }
+   :root {                    /* light mode values */
+     --gray-900: #111827;
+     --primary: #2563eb;
+   }
+   [data-theme="dark"] {      /* dark mode values, override the above */
+     --gray-900: #f8fafc;
+     --primary: #3b82f6;
+   }
+   ```
+   Existing utility classes (`bg-gray-50`, `text-gray-900`, `bg-primary`, `border-gray-200`, …)
+   therefore become theme-reactive automatically, everywhere they're already used — this is why
+   almost no component file needed to change. `[data-theme]` is set on `<html>` (see below), so it
+   cascades to the whole document.
+2. **`ThemeContext`** (`apps/admin/src/context/ThemeContext.tsx`, `apps/customer/src/context/ThemeContext.tsx`
+   — same shape in both, copy-pasted rather than shared since these are separate deployables):
+   reads/writes `localStorage` (`storedash_admin_theme` / `storedash_customer_theme`), sets
+   `document.documentElement.dataset.theme` in a `useEffect`, defaults to **`'dark'`** if nothing is
+   stored yet (matching each app's prior look, so no existing user sees a surprise theme change —
+   light is the new opt-in).
+3. **Flash-of-wrong-theme prevention**: `main.tsx` in both apps reads `localStorage` and sets
+   `document.documentElement.dataset.theme` *synchronously, before `ReactDOM.createRoot(...).render()`
+   is called* — `ThemeProvider`'s own effect runs after first paint, which would otherwise show the
+   dark default for one frame even for a user who'd chosen light.
+4. **`ThemeToggle`** (`apps/admin/src/components/ThemeToggle.tsx`,
+   `apps/customer/src/components/ThemeToggle.tsx`): a small icon button for quick access (sidebar
+   footer in admin, header in customer) — sun/moon, flips `theme`. The full control with labels
+   lives in Settings → Appearance (`AppearanceSection`/equivalent in each app's `SettingsPage.tsx`);
+   both read/write the same context, so they always agree.
+
+Preference is **client-only** (`localStorage`), not synced to the backend or `UserProfile` — it's a
+per-device display setting, not account data, so it deliberately doesn't round-trip through
+`PATCH /api/auth/me` the way `show_approval_badges` does (see below). `shared/src/types.ts` does
+export a `Theme = 'light' | 'dark'` type for both `ThemeContext`s to share, since it's a trivial,
+framework-agnostic type — but that's the extent of what's shared.
+
+### Admin app: light palette (new) vs. dark palette (formalized from the sidebar)
+
+Per the task, dark mode had to preserve the sidebar's existing look and brand colors (navy
+`#101922`-ish background, blue `#2563eb` primary), extended app-wide rather than staying
+sidebar-only; light mode had to be an intentionally designed palette, not dark-mode-inverted.
+`apps/admin/src/index.css` redefines, for both `:root` (light) and `[data-theme="dark"]`:
+
+- The full `gray-50`..`gray-900` scale (light: standard near-white-to-near-black Tailwind-like
+  values; dark: a navy/slate scale bottoming out at `#0b1220`, close to the sidebar's original
+  `#101922`) — same "50 = page background, 900 = high-contrast text" convention in both directions.
+- `surface` (card/panel background — white in light, `#141d2e` in dark, deliberately a shade
+  lighter than the `gray-50` page background so cards "pop") and `nav`/`nav-border`/`nav-active`
+  (the sidebar/mobile-header background and its own border/active-state tint — white in light mode
+  with a subtle border, the same near-black as the page in dark mode, so the sidebar reads as part
+  of the page rather than a fixed island in *either* theme now).
+- `primary` (`#2563eb` light / `#3b82f6` dark — brighter in dark mode for contrast, same brand hue).
+- The specific `rose`/`emerald`/`amber` shades this app actually uses for status colors
+  (`-50`/`-100`/`-200`/`-600`/`-700`) — light mode keeps the original pale-background/dark-text
+  pattern (`bg-rose-50 text-rose-700`); dark mode swaps to translucent mid-tone washes
+  (`rgba(244,63,94,.12)` etc.) with brightened text, because a pale `-50` swatch that reads as a
+  soft tint on white reads as a jarring, disconnected light box on a dark page. Only the shades
+  actually referenced in the codebase were redefined, found via
+  `grep -rn '(rose|emerald|amber|red)-(50|100|200|300|400|500|600|700|800|900)'` — not the entire
+  palette.
+
+**Sidebar refactor**: `AdminLayout.tsx`'s literal `bg-[#101922]`, `text-blue-400` (a hardcoded
+accent-text color disconnected from the `primary` token — the exact inconsistency the task's
+"consistency and polish" ask was about), and `text-red-400`/`hover:bg-red-500/10` (using Tailwind's
+stock `red` instead of the `rose` family used for errors everywhere else) were all replaced with
+the tokens above (`bg-nav`, `text-primary`, `text-rose-600`/`hover:bg-rose-50`) — one nav item, one
+consistent vocabulary. `ThemeToggle` was added to the sidebar footer.
+
+**The one non-token-driven fix**: many pages/components used **literal** `bg-white` for cards,
+badges, and buttons (`bg-white border border-gray-200 rounded-2xl`, the plain-Tailwind "card"
+idiom) — since real `white`/`black` are deliberately left un-redefined (matching the customer app's
+own convention, so `text-white` on a colored button stays reliably readable in both themes), a
+literal `bg-white` card doesn't flip to dark, while the `text-gray-900` heading inside it *does*
+flip to near-white — the result was invisible white-on-white text in dark mode. This was caught by
+actually loading the app (§ "How this was tested" below), not by reasoning about the CSS in the
+abstract. Fixed by changing every card/panel/input `bg-white` to `bg-surface` across 16 files
+(`sed -i 's/bg-white/bg-surface/g'` per file, then manually reverting the one legitimate exception —
+the Settings page's toggle-switch knob, a small circle that's supposed to stay literally white in
+both themes). The same root cause also affected hardcoded `bg-blue-50`/`text-blue-700`/
+`border-blue-200` role badges (7 files) — replaced with `bg-primary/10 text-primary border-primary/20`,
+reusing the already-theme-reactive `primary` token instead of adding a fourth redefined color family.
+
+### Customer app: converting a fixed dark palette into a real toggle
+
+The existing dark palette (violet `primary` `#7c3aed`, blue `accent` `#3b82f6`, `surface`/
+`surface-hover`) was preserved exactly as the `[data-theme="dark"]` values — per the task, dark
+mode keeps the existing brand colors unchanged. A new light palette was designed from scratch for
+`:root` (white surfaces, a near-black `gray-900` with a faint violet tint in the neutrals to tie
+back to the brand, same `primary`/`accent` hex in both themes so the brand reads consistently
+either way) — not a mechanical inversion of the dark values.
+
+One additional wrinkle here that the admin app didn't have: a handful of specific shades
+(`rose-400`, `emerald-400`, `amber-400`, `amber-300`) are used as **inline status text** (e.g. an
+order's "pending" badge) via Tailwind's stock, unredefined values — fine against a permanently dark
+background, too light to pass contrast against the new white one. Only those four shades were
+redefined per-theme (dark: kept at their original bright values; light: swapped to darker,
+more-saturated equivalents like `rose-600`/`emerald-600`/`amber-700`/`amber-800`). Every other
+rose/emerald/amber usage in this app is either a low-opacity wash (`bg-rose-500/10`) or a solid pill
+(`bg-rose-500 text-white`) — both already theme-agnostic by construction (an opacity-blended mid-tone
+reads fine against either a light or dark page), so left alone rather than over-tokenized.
+
+**The map**: `StoreMap.tsx`'s Leaflet `TileLayer` was hardcoded to CARTO's `dark_all` basemap tile
+set — actual map tile images fetched from an external URL, which no CSS variable can touch. This
+was the second bug caught only by actually loading the app: switching to light mode left the map
+tiles pitch black in an otherwise white page. Fixed by making the tile URL theme-reactive
+(`dark_all` vs `light_all`, keyed off `useTheme()`, with `key={theme}` on the `TileLayer` so it
+remounts cleanly on toggle rather than trying to hot-swap tiles mid-render). The store/user-location
+marker icons (`apps/customer/src/lib/leafletIcons.ts`) also had a hardcoded near-white SVG
+`stroke`/`border` used purely for contrast against the dark tiles — invisible against the new light
+tiles — now takes a `theme` param and swaps to a near-black outline in light mode.
+
+### The Settings pages
+
+**Admin** (`apps/admin/src/pages/SettingsPage.tsx`, replaces the old `/account` route): a pill-tab
+layout (same pattern as the existing Applications/Approvals pages) with sections shown based on
+what's actually relevant to the signed-in user:
+
+| Tab | Shown to | Content |
+|---|---|---|
+| Account | everyone | Avatar/name/email/role badge, editable display name + phone (`updateMyProfile`, newly added to `lib/api.ts` — the backend endpoint already existed, nothing in the admin UI called it before), sign out |
+| Security | everyone | Change password. Reauthenticates with the current password before calling Firebase's `updatePassword` (added `changePassword`/`providerHasPassword` to admin's `AuthContext.tsx`, which previously had no password-management methods at all — customer's `AuthContext` already did). A Google-only account gets "email me a link to set a password" instead, reusing the existing `sendPasswordReset` |
+| Store | only if the user manages ≥1 store | Read-only list of their stores with an `ApprovalBadge` per store, plus links to the existing Store Settings / Store Admins pages — deliberately does **not** re-implement store editing, which already has its own dedicated page (§14) |
+| Notifications | `super_admin` only | The one real, backend-persisted toggle — see below |
+| Appearance | everyone | Theme picker |
+| Platform | `super_admin` only | Quick links to Approvals / Applications / Store Owners — links only, no duplicated content |
+
+Notifications is `super_admin`-only, not shown to a plain `store_admin`, because the thing it
+controls — the Approvals/Applications pending-count badges in the "Platform" nav section — is
+itself `super_admin`-only; showing the toggle to a `store_admin` would be a setting with no visible
+effect for them, which the task explicitly said not to do ("do not add unnecessary settings just to
+fill the page").
+
+**Customer** (`apps/customer/src/pages/SettingsPage.tsx`, new route, doesn't replace anything):
+
+| Tab | Shown to | Content |
+|---|---|---|
+| Appearance | everyone, including signed-out visitors | Theme picker |
+| Account | signed-in only | Profile summary + a link to the existing `/account/manage` for actual editing, sign out |
+| Privacy & Security | signed-in only | A link to `/account/manage`'s password/email/delete-account sections |
+
+The customer app **deliberately does not duplicate** `ManageProfilePage.tsx`'s name/phone/email/
+password/delete-account editing inside Settings — that page already exists, already works, and
+already has its reauthentication flows built and tested (§23, §25). Settings' Account and Privacy &
+Security tabs are thin pointers to it rather than a second implementation of the same forms. This is
+the one place the two apps' Settings pages differ most in shape: admin's Account/Security tabs
+contain real, new inline editing (because the admin app had none before — the gap was real);
+customer's contain links (because the customer app already had a complete, tested editor — the gap
+was only "organize this under a Settings umbrella").
+
+**No "Notifications" tab in the customer Settings page.** The task explicitly listed "notification
+preferences," "email notification preferences," and "order/transaction notification preferences" as
+things to *consider* adding, alongside "do not add unnecessary settings just to fill the page — only
+include functionality that can actually be supported by the current application." Checked before
+building anything: `grep`ing `backend/` for `nodemailer`/`sendEmail`/`resend`/`sendgrid`/`SMTP`
+returns nothing — the only email StoreDash ever sends is Firebase Auth's own built-in verification/
+password-reset emails, triggered client-side, not from any backend event. There is no order-created,
+order-status-changed, or approval-decided email pathway to attach a preference to, and no `users`
+column to persist one against. Adding a toggle here would be exactly the "settings that don't
+actually do anything" the task said to avoid, so it was left out rather than shipped as a
+non-functional placeholder. If real transactional email is added later, this is the natural place
+for the preference to go.
+
+### The one new backend setting: `show_approval_badges`
+
+Unlike theme (client-only) or the Store/Platform tabs (links to existing pages), this is a real,
+new, persisted account setting — added because it's the one genuinely supportable "notification
+preference" in the current system (§ above): it toggles the existing, already-working
+Approvals/Applications pending-count badges (§26) on or off. `users.show_approval_badges` (boolean,
+default `true`, migration `backend/drizzle/0003_premium_jack_flag.sql` — no backfill concerns here
+since `true` is the correct value for every existing user). Threaded through the same
+`PATCH /api/auth/me` endpoint used for name/phone (`updateProfileSchema` in
+`backend/src/validators/auth.validator.ts`, `updateOwnProfile` in `users.service.ts`) rather than a
+new endpoint — same narrow, role-can't-be-set pattern as everything else that endpoint already does.
+
+### How this was tested
+
+Both apps were actually launched (`npm run dev`) and driven with Playwright (headless Chromium,
+installed for this purpose — see `npx playwright install chromium`) rather than only reasoning about
+the CSS:
+
+1. Signed into the admin app as the real `super_admin` test account via a Firebase custom token
+   (minted with the Admin SDK, exchanged for an ID token via
+   `signInWithCustomToken` — loaded from the **same major version** of the Firebase Web SDK the app
+   itself uses, `12.17.1`; using a mismatched CDN version silently produced a session the app's own
+   Firebase instance didn't recognize on reload, which cost real debugging time before being caught).
+2. Screenshotted, in both themes: the admin login page, dashboard, products table, the "Add Product"
+   modal, and every Settings tab; the customer home page (map + store list), the sign-in page, and
+   Settings.
+3. Caught and fixed three real bugs this way, none of which were visible from reading the CSS alone
+   (all described above): the `bg-white` card/text-contrast bug, the `bg-blue-50` badge bug, and the
+   customer app's map tiles/marker outlines not responding to the theme at all.
+4. Confirmed zero browser console errors on any screenshotted page (`page.on('console', ...)`
+   filtered to `type() === 'error'`).
+5. `tsc --noEmit` clean across `backend`, `apps/admin`, `apps/customer`, and `shared` after every
+   round of fixes, not just at the end.
+
+All screenshots and the Playwright driver script were temporary (scratchpad directory) and are not
+part of the repo.

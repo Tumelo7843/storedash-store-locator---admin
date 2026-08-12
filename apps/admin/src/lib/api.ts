@@ -78,6 +78,8 @@ export interface ManagedProfile extends UserProfile {
 
 export const getMe = () => request<{ data: ManagedProfile }>('/api/auth/me').then((r) => r.data);
 export const syncProfile = () => request<{ data: UserProfile }>('/api/auth/sync', { method: 'POST' }).then((r) => r.data);
+export const updateMyProfile = (data: { name?: string; phone?: string; showApprovalBadges?: boolean }) =>
+  request<{ data: UserProfile }>('/api/auth/me', { method: 'PATCH', body: JSON.stringify(data) }).then((r) => r.data);
 
 // ---- Stores ----
 export const fetchMyStores = (params: { approvalStatus?: ApprovalStatus } = {}) =>

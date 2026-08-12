@@ -3,6 +3,10 @@
 
 export type UserRole = 'customer' | 'store_admin' | 'super_admin';
 
+// Client-persisted only (localStorage, per app) — there is no backend column
+// for this, it's purely a display preference. See README "Theme system".
+export type Theme = 'light' | 'dark';
+
 export type StoreStatus = 'active' | 'inactive';
 export type ProductAvailability = 'in_stock' | 'low_stock' | 'out_of_stock';
 export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
@@ -37,6 +41,11 @@ export interface UserProfile {
   avatarUrl: string | null;
   role: UserRole;
   suspended: boolean;
+  // Whether the admin sidebar's pending-approval count badges are shown —
+  // a display preference only, the underlying counts are always computed
+  // server-side regardless. Meaningless for a `customer` (they never see
+  // those badges), but present on every profile for a uniform shape.
+  showApprovalBadges: boolean;
   createdAt: string;
 }
 

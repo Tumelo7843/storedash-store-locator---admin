@@ -76,7 +76,7 @@ function ItemCard({ title, subtitle, meta, status, rejectionReason, onApprove, o
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-5 flex flex-col gap-3">
+    <div className="bg-surface border border-gray-200 rounded-2xl p-5 flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-gray-900">{title}</p>
@@ -154,7 +154,7 @@ export function ApprovalsPage() {
             key={k.key}
             onClick={() => setKind(k.key)}
             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold ${
-              kind === k.key ? 'bg-primary text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100'
+              kind === k.key ? 'bg-primary text-white' : 'bg-surface border border-gray-200 text-gray-700 hover:bg-gray-100'
             }`}
           >
             <k.icon className="size-3.5" /> {k.label}
@@ -168,7 +168,7 @@ export function ApprovalsPage() {
             key={s}
             onClick={() => setStatus(s)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap capitalize ${
-              status === s ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100'
+              status === s ? 'bg-gray-900 text-white' : 'bg-surface border border-gray-200 text-gray-700 hover:bg-gray-100'
             }`}
           >
             {s}

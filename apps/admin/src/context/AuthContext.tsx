@@ -1,9 +1,12 @@
 import {
+  EmailAuthProvider,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
+  updatePassword as firebaseUpdatePassword,
   type User,
 } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
@@ -29,6 +32,16 @@ interface AuthContextValue {
   // computed identically regardless of which provider produced the token.
   signInWithGoogle: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  // Reauthenticates with the current password, then sets the new one in one
+  // call — Firebase rejects a bare updatePassword() with
+  // auth/requires-recent-login unless the session is fresh, so this always
+  // proves the current password first rather than reacting to that error.
+  // Only meaningful for a password-provider account (see providerHasPassword).
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  // Whether the signed-in Firebase user has a password sign-in method at all
+  // (false for a Google-only account) — determines whether Settings shows
+  // the change-password form or a "send a reset link" fallback instead.
+  providerHasPassword: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -73,6 +86,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await sendPasswordResetEmail(auth, email);
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (!firebaseUser?.email) throw new Error('No signed-in email account');
+    await reauthenticateWithCredential(firebaseUser, EmailAuthProvider.credential(firebaseUser.email, currentPassword));
+    await firebaseUpdatePassword(firebaseUser, newPassword);
+  };
+
+  const providerHasPassword = Boolean(firebaseUser?.providerData.some((p) => p.providerId === 'password'));
+
   const signOut = async () => {
     await firebaseSignOut(auth);
   };
@@ -81,7 +102,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ firebaseUser, profile, loading, isAuthorized, signInWithEmail, signInWithGoogle, sendPasswordReset, signOut, refreshProfile: loadProfile }}
+      value={{
+        firebaseUser,
+        profile,
+        loading,
+        isAuthorized,
+        signInWithEmail,
+        signInWithGoogle,
+        sendPasswordReset,
+        changePassword,
+        providerHasPassword,
+        signOut,
+        refreshProfile: loadProfile,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -4,6 +4,7 @@ import { LocateFixed, MapPinOff } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import { Link } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 import { storeMarkerIcon, userLocationIcon } from '../lib/leafletIcons';
 
 interface StoreMapProps {
@@ -97,6 +98,7 @@ function LocateButton({ onClick, active }: { onClick: () => void; active: boolea
 // misleading. Callers should show those stores in a list with a "location
 // unavailable" note instead.
 export function StoreMap({ stores, selectedStoreId, onSelectStore, userLocation, onLocateMe, locating }: StoreMapProps) {
+  const { theme } = useTheme();
   const plottable = stores.filter((s): s is Store & { lat: number; lng: number } => s.lat !== null && s.lng !== null);
 
   const points: [number, number][] = [
@@ -111,8 +113,9 @@ export function StoreMap({ stores, selectedStoreId, onSelectStore, userLocation,
     <div className="relative size-full">
       <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} scrollWheelZoom className="size-full">
         <TileLayer
+          key={theme}
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url={`https://{s}.basemaps.cartocdn.com/${theme === 'dark' ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`}
         />
         <MapReadyGate>
           <FitToMarkers points={points} />
@@ -120,7 +123,7 @@ export function StoreMap({ stores, selectedStoreId, onSelectStore, userLocation,
         </MapReadyGate>
 
         {userLocation && (
-          <Marker position={[userLocation.lat, userLocation.lng]} icon={userLocationIcon()} zIndexOffset={-100}>
+          <Marker position={[userLocation.lat, userLocation.lng]} icon={userLocationIcon(theme)} zIndexOffset={-100}>
             <Popup>Your location</Popup>
           </Marker>
         )}
@@ -129,7 +132,7 @@ export function StoreMap({ stores, selectedStoreId, onSelectStore, userLocation,
           <Marker
             key={store.id}
             position={[store.lat, store.lng]}
-            icon={storeMarkerIcon(store.id === selectedStoreId)}
+            icon={storeMarkerIcon(store.id === selectedStoreId, theme)}
             zIndexOffset={store.id === selectedStoreId ? 1000 : 0}
             eventHandlers={{ click: () => onSelectStore(store.id) }}
           >

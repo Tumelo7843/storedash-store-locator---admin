@@ -86,7 +86,7 @@ export function StoreSettingsPage() {
           <ImageUploadField label="Banner Image" value={form.bannerUrl ?? ''} onChange={(url) => set('bannerUrl', url)} folder="stores" />
         </div>
         <Field label="Store Status">
-          <select value={form.status} onChange={(e) => set('status', e.target.value as Store['status'])} className="input bg-white">
+          <select value={form.status} onChange={(e) => set('status', e.target.value as Store['status'])} className="input bg-surface">
             <option value="active">Active (visible to customers)</option>
             <option value="inactive">Inactive (hidden from customers)</option>
           </select>
@@ -170,7 +170,7 @@ export function StoreSettingsPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col gap-4">
+    <div className="bg-surface border border-gray-200 rounded-2xl p-6 flex flex-col gap-4">
       <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider border-b border-gray-100 pb-2">{title}</h2>
       {children}
     </div>

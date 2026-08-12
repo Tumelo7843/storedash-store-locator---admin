@@ -68,7 +68,7 @@ export function ProductsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name or SKU…"
-          className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
@@ -77,7 +77,7 @@ export function ProductsPage() {
 
       {!query.loading && !query.error && (
         query.data?.items.length ? (
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <div className="bg-surface border border-gray-200 rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -120,7 +120,7 @@ export function ProductsPage() {
                               setEditing(product);
                               setModalOpen(true);
                             }}
-                            className="p-2 rounded-lg text-gray-500 hover:text-primary hover:bg-blue-50"
+                            className="p-2 rounded-lg text-gray-500 hover:text-primary hover:bg-primary/10"
                           >
                             <Edit2 className="size-4" />
                           </button>

@@ -28,14 +28,22 @@ export async function findUserByUid(uid: string): Promise<DbUser | undefined> {
   return user;
 }
 
-// Deliberately narrow: only name/phone are writable by the user themselves.
-// role/suspended are never accepted here — see storeOwnerApplications.service
-// (role) and storeOwners.service (suspended) for the only paths that touch
-// those columns, both gated to super_admin server-side.
-export async function updateOwnProfile(userId: number, data: { name?: string; phone?: string }): Promise<DbUser> {
+// Deliberately narrow: only name/phone/showApprovalBadges are writable by the
+// user themselves. role/suspended are never accepted here — see
+// storeOwnerApplications.service (role) and storeOwners.service (suspended)
+// for the only paths that touch those columns, both gated to super_admin
+// server-side.
+export async function updateOwnProfile(
+  userId: number,
+  data: { name?: string; phone?: string; showApprovalBadges?: boolean },
+): Promise<DbUser> {
   const [user] = await db
     .update(users)
-    .set({ ...(data.name !== undefined ? { name: data.name } : {}), ...(data.phone !== undefined ? { phone: data.phone } : {}) })
+    .set({
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.phone !== undefined ? { phone: data.phone } : {}),
+      ...(data.showApprovalBadges !== undefined ? { showApprovalBadges: data.showApprovalBadges } : {}),
+    })
     .where(eq(users.id, userId))
     .returning();
   if (!user) throw AppError.notFound('User not found');

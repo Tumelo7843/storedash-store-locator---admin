@@ -2,40 +2,113 @@
 @import "leaflet/dist/leaflet.css";
 
 /*
- * StoreDash visual identity: dark purple primary, charcoal backgrounds, blue accent.
+ * StoreDash visual identity: violet primary, blue accent — preserved
+ * identically across both themes (only backgrounds/surfaces/text change).
  *
- * Rather than rewrite every `text-gray-900` / `border-gray-200` class name across
- * the app, the neutral scale (gray-50..900) is redefined here so the existing
- * semantic usage (50 = page-level background, 900 = high-contrast text) maps onto
- * a charcoal-with-purple-tint scale instead of Tailwind's default light-mode
- * greys. `white`/`black` are intentionally left at their real values — the app
- * uses literal `text-white` for button labels and translucent overlays, which
- * must stay actual white regardless of theme. Card surfaces use the new
- * `surface` token instead of `white`. `primary` (brand: buttons, nav, logo) and
- * `accent` (selection, links, focus) are two distinct hues so the two concerns
- * never fight for the same pixels.
+ * Theming mechanism: every color below (`--color-*` inside `@theme inline`)
+ * points at a plain CSS custom property of the same short name (`--gray-50`,
+ * `--primary`, etc.), defined once for light mode on `:root` and re-defined
+ * for dark mode under `[data-theme="dark"]`. Existing classes like
+ * `bg-gray-50`, `text-gray-900`, `bg-surface` are therefore theme-reactive
+ * automatically — no `dark:` variant classes needed anywhere in the app.
+ * `@theme inline` (not plain `@theme`) is required because these are
+ * references, not literals — see Tailwind v4's CSS-variable theming docs.
+ *
+ * Light mode is NOT dark mode inverted — it's a fresh, intentionally
+ * designed light palette (white cards, near-black text, a faint violet
+ * tint in the neutrals to tie back to the brand), not a mechanical flip.
+ * The gray scale keeps its established convention either way: 50 = page-
+ * level background, 900 = highest-contrast text.
+ *
+ * `--rose-400`/`--emerald-400`/`--amber-400`/`--amber-300` are redefined
+ * too, separately from the rest of the rose/emerald/amber palette: the app
+ * uses these specific shades as inline status TEXT (e.g. "pending" badges),
+ * and the values tuned for readability on the dark palette are too light
+ * to pass contrast on a white background — see the light/dark blocks below.
+ * Every other rose/emerald/amber shade is used only as a low-opacity wash
+ * (`bg-rose-500/10`) or a solid pill (`bg-rose-500 text-white`), both of
+ * which already read fine unchanged in either theme, so they're left as
+ * Tailwind's stock values rather than adding tokens nothing needs.
  */
-@theme {
-  --color-gray-50: #0d0b12;
-  --color-gray-100: #1c1926;
-  --color-gray-200: #2a2536;
-  --color-gray-300: #3a3348;
-  --color-gray-400: #6b6480;
-  --color-gray-500: #8b8299;
-  --color-gray-600: #a89fbd;
-  --color-gray-700: #c3bcd6;
-  --color-gray-800: #ded8ea;
-  --color-gray-900: #f6f4fa;
+@theme inline {
+  --color-gray-50: var(--gray-50);
+  --color-gray-100: var(--gray-100);
+  --color-gray-200: var(--gray-200);
+  --color-gray-300: var(--gray-300);
+  --color-gray-400: var(--gray-400);
+  --color-gray-500: var(--gray-500);
+  --color-gray-600: var(--gray-600);
+  --color-gray-700: var(--gray-700);
+  --color-gray-800: var(--gray-800);
+  --color-gray-900: var(--gray-900);
 
-  --color-surface: #17141f;
-  --color-surface-hover: #1e1a29;
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
 
-  --color-primary: #7c3aed;
-  --color-accent: #3b82f6;
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
+
+  --color-rose-300: var(--rose-300);
+  --color-rose-400: var(--rose-400);
+  --color-emerald-400: var(--emerald-400);
+  --color-amber-300: var(--amber-300);
+  --color-amber-400: var(--amber-400);
 }
 
 :root {
+  color-scheme: light;
+
+  --gray-50: #faf9fc;
+  --gray-100: #f2eef8;
+  --gray-200: #e5def2;
+  --gray-300: #d3c9e8;
+  --gray-400: #9186a8;
+  --gray-500: #6e6485;
+  --gray-600: #554b6c;
+  --gray-700: #3d3450;
+  --gray-800: #261e37;
+  --gray-900: #17111f;
+
+  --surface: #ffffff;
+  --surface-hover: #f7f4fb;
+
+  --primary: #7c3aed;
+  --accent: #3b82f6;
+
+  /* Darker/more saturated than the dark-mode shades below — tuned to pass
+     contrast as inline text on a white/near-white background. */
+  --rose-300: #f43f5e;
+  --rose-400: #e11d48;
+  --emerald-400: #059669;
+  --amber-300: #92400e;
+  --amber-400: #b45309;
+}
+
+[data-theme="dark"] {
   color-scheme: dark;
+
+  --gray-50: #0d0b12;
+  --gray-100: #1c1926;
+  --gray-200: #2a2536;
+  --gray-300: #3a3348;
+  --gray-400: #6b6480;
+  --gray-500: #8b8299;
+  --gray-600: #a89fbd;
+  --gray-700: #c3bcd6;
+  --gray-800: #ded8ea;
+  --gray-900: #f6f4fa;
+
+  --surface: #17141f;
+  --surface-hover: #1e1a29;
+
+  --primary: #7c3aed;
+  --accent: #3b82f6;
+
+  --rose-300: #fda4af;
+  --rose-400: #fb7185;
+  --emerald-400: #34d399;
+  --amber-300: #fcd34d;
+  --amber-400: #fbbf24;
 }
 
 @layer components {
@@ -52,15 +125,20 @@ body {
   width: 100%;
   height: 100%;
   font-family: inherit;
-  background: #14121b;
+  background: var(--color-gray-100);
 }
 
 /* Leaflet chrome (zoom controls, popups, attribution) re-themed to match the
-   charcoal/purple palette instead of its default white UI. */
+   app's palette instead of its default white UI — already theme-reactive
+   via the tokens above, no [data-theme] overrides needed here. */
 .leaflet-control-zoom {
   border: 1px solid var(--color-gray-200) !important;
   border-radius: 0.75rem !important;
   overflow: hidden;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-theme="dark"] .leaflet-control-zoom {
   box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.6) !important;
 }
 
@@ -81,6 +159,10 @@ body {
   color: var(--color-gray-800);
   border: 1px solid var(--color-gray-200);
   border-radius: 0.875rem;
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .leaflet-popup-content-wrapper {
   box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.65);
 }
 
@@ -99,7 +181,7 @@ body {
 }
 
 .leaflet-control-attribution {
-  background: rgba(23, 20, 32, 0.75) !important;
+  background: color-mix(in srgb, var(--color-surface) 75%, transparent) !important;
   color: var(--color-gray-500) !important;
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);

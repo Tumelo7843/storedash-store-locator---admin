@@ -42,6 +42,12 @@ export const users = pgTable('users', {
   // user is rejected at requireAuth on every request regardless of what they'd
   // otherwise be allowed to do, without losing their role or store assignments.
   suspended: boolean('suspended').notNull().default(false),
+  // Admin/super_admin only in practice (a customer has no badges to show) —
+  // controls whether the Approvals/Applications pending-count badges render
+  // in the admin sidebar (apps/admin/src/components/AdminLayout.tsx). Purely
+  // a display preference; the underlying counts are always computed
+  // server-side regardless of this setting.
+  showApprovalBadges: boolean('show_approval_badges').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

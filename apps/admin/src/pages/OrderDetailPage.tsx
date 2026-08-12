@@ -9,7 +9,7 @@ import { useAsync } from '../lib/useAsync';
 const STATUSES: OrderStatus[] = ['pending', 'processing', 'completed', 'cancelled'];
 const STATUS_STYLES: Record<string, string> = {
   pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  processing: 'bg-blue-50 text-blue-700 border-blue-200',
+  processing: 'bg-primary/10 text-primary border-primary/20',
   completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   cancelled: 'bg-gray-100 text-gray-600 border-gray-200',
 };
@@ -48,13 +48,13 @@ export function OrderDetailPage() {
         <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${STATUS_STYLES[order.status]}`}>{order.status}</span>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">
+      <div className="bg-surface border border-gray-200 rounded-2xl p-5 mb-6">
         <h2 className="text-sm font-bold text-gray-800 mb-2">Customer</h2>
         <p className="text-sm text-gray-900">{order.customerName}</p>
         <p className="text-xs text-gray-500">{order.customerEmail}</p>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100 mb-6">
+      <div className="bg-surface border border-gray-200 rounded-2xl divide-y divide-gray-100 mb-6">
         {order.items.map((item) => (
           <div key={item.id} className="p-4 flex items-center justify-between">
             <div>
@@ -72,7 +72,7 @@ export function OrderDetailPage() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-2xl p-5">
+      <div className="bg-surface border border-gray-200 rounded-2xl p-5">
         <h2 className="text-sm font-bold text-gray-800 mb-3">Update Status</h2>
         <div className="flex flex-wrap items-center gap-2">
           {STATUSES.map((s) => (

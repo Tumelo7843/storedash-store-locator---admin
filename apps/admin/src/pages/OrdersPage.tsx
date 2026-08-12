@@ -11,7 +11,7 @@ import { useAsync } from '../lib/useAsync';
 const STATUSES: Array<OrderStatus | 'all'> = ['all', 'pending', 'processing', 'completed', 'cancelled'];
 const STATUS_STYLES: Record<string, string> = {
   pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  processing: 'bg-blue-50 text-blue-700 border-blue-200',
+  processing: 'bg-primary/10 text-primary border-primary/20',
   completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   cancelled: 'bg-gray-100 text-gray-600 border-gray-200',
 };
@@ -43,7 +43,7 @@ export function OrdersPage() {
             key={s}
             onClick={() => setStatus(s)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap capitalize ${
-              status === s ? 'bg-primary text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100'
+              status === s ? 'bg-primary text-white' : 'bg-surface border border-gray-200 text-gray-700 hover:bg-gray-100'
             }`}
           >
             {s}
@@ -56,7 +56,7 @@ export function OrdersPage() {
 
       {!query.loading && !query.error && (
         query.data?.items.length ? (
-          <div className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100">
+          <div className="bg-surface border border-gray-200 rounded-2xl divide-y divide-gray-100">
             {query.data.items.map((order) => (
               <Link key={order.id} to={`/orders/${order.id}`} className="p-4 flex items-center justify-between hover:bg-gray-50">
                 <div>

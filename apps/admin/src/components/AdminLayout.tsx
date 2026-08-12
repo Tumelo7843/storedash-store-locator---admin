@@ -1,6 +1,7 @@
 import { CheckSquare, ChevronDown, ClipboardList, LayoutDashboard, LogOut, Menu, Package, Settings, ShieldCheck, ShoppingBag, Sparkles, Store, Users, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
 import { useStore } from '../context/StoreContext';
 import { useApprovalSummary } from '../lib/useApprovalSummary';
@@ -28,18 +29,18 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const isSuperAdmin = profile?.role === 'super_admin';
-  const summary = useApprovalSummary(isSuperAdmin);
+  const summary = useApprovalSummary(isSuperAdmin && (profile?.showApprovalBadges ?? true));
   const pendingApprovals = (summary?.pendingStores ?? 0) + (summary?.pendingProducts ?? 0) + (summary?.pendingServices ?? 0);
 
   const sidebar = (
-    <aside className="flex h-full flex-col w-64 shrink-0 bg-[#101922] text-gray-200 p-4">
+    <aside className="flex h-full flex-col w-64 shrink-0 bg-nav border-r border-nav-border text-gray-700 p-4">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-primary text-white">
             <ShieldCheck className="size-5" />
           </div>
           <div>
-            <h1 className="font-extrabold text-base leading-none">StoreDash</h1>
+            <h1 className="font-extrabold text-base leading-none text-gray-900">StoreDash</h1>
             <p className="text-[10px] text-gray-400 font-medium">Admin</p>
           </div>
         </div>
@@ -52,16 +53,16 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         <div className="relative mb-4">
           <button
             onClick={() => setSwitcherOpen((v) => !v)}
-            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-gray-800/80 border border-gray-700 text-left"
+            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-gray-100 border border-gray-200 text-left"
           >
             <div className="min-w-0">
-              <p className="text-[10px] text-gray-400 font-bold uppercase">Managing</p>
-              <p className="text-sm font-bold text-white truncate">{currentStore?.name ?? 'Select a store'}</p>
+              <p className="text-[10px] text-gray-500 font-bold uppercase">Managing</p>
+              <p className="text-sm font-bold text-gray-900 truncate">{currentStore?.name ?? 'Select a store'}</p>
             </div>
             <ChevronDown className="size-4 text-gray-400 shrink-0" />
           </button>
           {switcherOpen && (
-            <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-xl max-h-64 overflow-y-auto">
+            <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-surface border border-gray-200 rounded-xl overflow-hidden shadow-xl max-h-64 overflow-y-auto">
               {stores.map((s) => (
                 <button
                   key={s.id}
@@ -69,7 +70,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                     setCurrentStoreId(s.id);
                     setSwitcherOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-700 ${s.id === currentStore?.id ? 'text-primary font-bold' : 'text-gray-200'}`}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${s.id === currentStore?.id ? 'text-primary font-bold' : 'text-gray-700'}`}
                 >
                   {s.name}
                 </button>
@@ -88,7 +89,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               to={item.to}
               onClick={() => setMobileOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                active ? 'bg-primary/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-800/80 hover:text-white'
+                active ? 'bg-nav-active text-primary font-semibold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >
               <item.icon className="size-5" />
@@ -103,7 +104,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               to="/approvals"
               onClick={() => setMobileOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === '/approvals' ? 'bg-primary/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-800/80 hover:text-white'
+                location.pathname === '/approvals' ? 'bg-nav-active text-primary font-semibold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >
               <CheckSquare className="size-5" />
@@ -114,7 +115,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               to="/applications"
               onClick={() => setMobileOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === '/applications' ? 'bg-primary/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-800/80 hover:text-white'
+                location.pathname === '/applications' ? 'bg-nav-active text-primary font-semibold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >
               <ClipboardList className="size-5" />
@@ -125,7 +126,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               to="/store-owners"
               onClick={() => setMobileOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === '/store-owners' ? 'bg-primary/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-800/80 hover:text-white'
+                location.pathname === '/store-owners' ? 'bg-nav-active text-primary font-semibold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >
               <Users className="size-5" />
@@ -135,20 +136,23 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         )}
       </nav>
 
-      <div className="mt-auto flex flex-col gap-1 pt-4 border-t border-gray-800">
+      <div className="mt-auto flex flex-col gap-1 pt-4 border-t border-nav-border">
+        <ThemeToggle />
         <Link
-          to="/account"
+          to="/settings"
           onClick={() => setMobileOpen(false)}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800"
+          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            location.pathname === '/settings' ? 'bg-nav-active text-primary font-semibold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+          }`}
         >
-          <Settings className="size-5" /> Account
+          <Settings className="size-5" /> Settings
         </Link>
         <button
           onClick={async () => {
             await signOut();
             navigate('/login');
           }}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-rose-600 hover:bg-rose-50"
         >
           <LogOut className="size-5" /> Sign out
         </button>
@@ -168,8 +172,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="lg:hidden sticky top-0 z-30 bg-[#101922] text-white p-3 flex items-center gap-3">
-          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg bg-gray-800" aria-label="Open menu">
+        <header className="lg:hidden sticky top-0 z-30 bg-nav border-b border-nav-border text-gray-900 p-3 flex items-center gap-3">
+          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg bg-gray-100 text-gray-700" aria-label="Open menu">
             <Menu className="size-5" />
           </button>
           <span className="font-bold text-sm">{currentStore?.name ?? 'StoreDash Admin'}</span>

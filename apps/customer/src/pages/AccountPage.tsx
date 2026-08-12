@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Mail, Phone, Settings, ShieldCheck, Store } from 'lucide-react';
+import { LogIn, LogOut, Mail, Phone, Settings, ShieldCheck, SlidersHorizontal, Store } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Spinner } from '../components/ui/States';
@@ -81,6 +81,13 @@ export function AccountPage() {
           </a>
         )
       )}
+
+      <Link
+        to="/settings"
+        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm font-bold"
+      >
+        <SlidersHorizontal className="size-4" /> Settings
+      </Link>
 
       <Link
         to="/account/manage"

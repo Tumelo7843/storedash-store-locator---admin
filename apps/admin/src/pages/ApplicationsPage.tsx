@@ -47,7 +47,7 @@ function ApplicationCard({ application, onChanged }: { application: StoreOwnerAp
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-5 flex flex-col gap-3">
+    <div className="bg-surface border border-gray-200 rounded-2xl p-5 flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-gray-900">{application.businessName}</p>
@@ -133,7 +133,7 @@ export function ApplicationsPage() {
             key={s}
             onClick={() => setStatus(s)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap capitalize ${
-              status === s ? 'bg-primary text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100'
+              status === s ? 'bg-primary text-white' : 'bg-surface border border-gray-200 text-gray-700 hover:bg-gray-100'
             }`}
           >
             {s}

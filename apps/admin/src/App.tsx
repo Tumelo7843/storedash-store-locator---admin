@@ -4,7 +4,7 @@ import { AdminLayout } from './components/AdminLayout';
 import { Spinner } from './components/ui/States';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { StoreProvider } from './context/StoreContext';
-import { AccountPage } from './pages/AccountPage';
+import { ThemeProvider } from './context/ThemeContext';
 import { AdminsPage } from './pages/AdminsPage';
 import { ApplicationsPage } from './pages/ApplicationsPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
@@ -16,6 +16,7 @@ import { OrderDetailPage } from './pages/OrderDetailPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { ServicesPage } from './pages/ServicesPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { StoreOwnersPage } from './pages/StoreOwnersPage';
 import { StoreSettingsPage } from './pages/StoreSettingsPage';
 
@@ -82,15 +83,17 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
-      <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
+      <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
     </Routes>
   );
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

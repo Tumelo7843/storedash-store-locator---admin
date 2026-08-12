@@ -61,7 +61,7 @@ export function ServicesPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search services…"
-          className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
@@ -72,7 +72,7 @@ export function ServicesPage() {
         query.data?.items.length ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {query.data.items.map((service) => (
-              <div key={service.id} className={`bg-white border border-gray-200 rounded-2xl p-4 flex flex-col gap-3 ${!service.isActive ? 'opacity-50' : ''}`}>
+              <div key={service.id} className={`bg-surface border border-gray-200 rounded-2xl p-4 flex flex-col gap-3 ${!service.isActive ? 'opacity-50' : ''}`}>
                 <div className="flex items-start justify-between">
                   <div>
                     <span className="text-[10px] font-bold text-gray-400 uppercase">{service.category}</span>
@@ -84,7 +84,7 @@ export function ServicesPage() {
                         setEditing(service);
                         setModalOpen(true);
                       }}
-                      className="p-1.5 rounded-lg text-gray-500 hover:text-primary hover:bg-blue-50"
+                      className="p-1.5 rounded-lg text-gray-500 hover:text-primary hover:bg-primary/10"
                     >
                       <Edit2 className="size-3.5" />
                     </button>
