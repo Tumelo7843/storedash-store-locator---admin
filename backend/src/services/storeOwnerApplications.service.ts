@@ -65,6 +65,10 @@ export async function approveApplication(applicationId: number, reviewerId: numb
     if (!application) throw AppError.notFound('Application not found');
     if (application.status !== 'pending') throw AppError.conflict(`Application is already ${application.status}`);
 
+    // approvalStatus is set to 'approved' here, not left at the column
+    // default ('pending') — a super_admin approving this application IS the
+    // review; the resulting store shouldn't need a second, redundant pass
+    // through the store-approval queue (see approvals.service.ts).
     const [store] = await tx
       .insert(stores)
       .values({
@@ -78,6 +82,9 @@ export async function approveApplication(applicationId: number, reviewerId: numb
         country: application.country,
         phone: application.phone,
         email: application.email,
+        approvalStatus: 'approved',
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
       })
       .returning();
 

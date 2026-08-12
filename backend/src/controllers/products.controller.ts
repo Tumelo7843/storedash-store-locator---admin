@@ -3,14 +3,14 @@ import type { AuthedRequest } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { toProductDTO } from '../utils/mappers.js';
 import { listProductsQuerySchema, createProductSchema, updateProductSchema } from '../validators/products.validator.js';
-import { idParamSchema } from '../validators/common.js';
+import { idParamSchema, rejectReasonSchema } from '../validators/common.js';
 import * as productsService from '../services/products.service.js';
 import { getStoreIdsManagedByUser, userCanManageStore } from '../services/storeAccess.service.js';
 import { AppError } from '../utils/errors.js';
 
 export const listPublicProducts = asyncHandler(async (req: AuthedRequest, res: Response) => {
   const query = listProductsQuerySchema.parse(req.query);
-  const { rows, total } = await productsService.listProducts({ ...query, includeInactive: false });
+  const { rows, total } = await productsService.listProducts({ ...query, includeInactive: false, requireApproved: true });
   res.json({
     data: rows.map(toProductDTO),
     pagination: { page: query.page, limit: query.limit, total, totalPages: Math.ceil(total / query.limit) || 1 },
@@ -20,7 +20,7 @@ export const listPublicProducts = asyncHandler(async (req: AuthedRequest, res: R
 export const getPublicProduct = asyncHandler(async (req: AuthedRequest, res: Response) => {
   const { id } = idParamSchema.parse(req.params);
   const product = await productsService.getProductById(id);
-  if (!product.isActive) throw AppError.notFound('Product not found');
+  if (!product.isActive || product.approvalStatus !== 'approved') throw AppError.notFound('Product not found');
   res.json({ data: toProductDTO(product) });
 });
 
@@ -41,6 +41,9 @@ export const listMyProducts = asyncHandler(async (req: AuthedRequest, res: Respo
   res.json({ data: rows.map(toProductDTO), pagination: { page: query.page, limit: query.limit, total, totalPages: Math.ceil(total / query.limit) || 1 } });
 });
 
+// A store_admin's product starts pending until a super_admin approves it; a
+// super_admin's own product is auto-approved (see stores.controller.ts's
+// createStore for the same reasoning).
 export const createProduct = asyncHandler(async (req: AuthedRequest, res: Response) => {
   const storeId = parseInt(req.body.storeId, 10);
   if (Number.isNaN(storeId)) throw AppError.badRequest('storeId is required');
@@ -48,10 +51,14 @@ export const createProduct = asyncHandler(async (req: AuthedRequest, res: Respon
   if (!allowed) throw AppError.forbidden('You do not manage this store');
 
   const body = createProductSchema.parse(req.body);
+  const isSuperAdmin = req.authUser!.role === 'super_admin';
   const product = await productsService.createProduct({
     ...body,
     storeId,
     price: String(body.price),
+    ...(isSuperAdmin
+      ? { approvalStatus: 'approved', reviewedBy: req.authUser!.id, reviewedAt: new Date() }
+      : { approvalStatus: 'pending' }),
   });
   res.status(201).json({ data: toProductDTO(product) });
 });
@@ -59,10 +66,14 @@ export const createProduct = asyncHandler(async (req: AuthedRequest, res: Respon
 export const updateProduct = asyncHandler(async (req: AuthedRequest, res: Response) => {
   const { id } = idParamSchema.parse(req.params);
   const body = updateProductSchema.parse(req.body);
-  const product = await productsService.updateProduct(id, {
-    ...body,
-    price: body.price !== undefined ? String(body.price) : undefined,
-  });
+  const product = await productsService.updateProduct(
+    id,
+    {
+      ...body,
+      price: body.price !== undefined ? String(body.price) : undefined,
+    },
+    { resubmitIfRejected: req.authUser!.role !== 'super_admin' },
+  );
   res.json({ data: toProductDTO(product) });
 });
 
@@ -70,4 +81,18 @@ export const deleteProduct = asyncHandler(async (req: AuthedRequest, res: Respon
   const { id } = idParamSchema.parse(req.params);
   await productsService.deleteProduct(id);
   res.status(204).send();
+});
+
+// super_admin only (see products.routes.ts).
+export const approveProduct = asyncHandler(async (req: AuthedRequest, res: Response) => {
+  const { id } = idParamSchema.parse(req.params);
+  const product = await productsService.approveProduct(id, req.authUser!.id);
+  res.json({ data: toProductDTO(product) });
+});
+
+export const rejectProduct = asyncHandler(async (req: AuthedRequest, res: Response) => {
+  const { id } = idParamSchema.parse(req.params);
+  const { reason } = rejectReasonSchema.parse(req.body);
+  const product = await productsService.rejectProduct(id, req.authUser!.id, reason);
+  res.json({ data: toProductDTO(product) });
 });

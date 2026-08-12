@@ -2,6 +2,7 @@ import type { Product } from '@storedash/shared';
 import { formatZAR } from '@storedash/shared';
 import { Edit2, Package, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { ApprovalBadge } from '../components/ApprovalBadge';
 import { ProductModal } from '../components/ProductModal';
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States';
 import { useStore } from '../context/StoreContext';
@@ -105,9 +106,12 @@ export function ProductsPage() {
                       <td className="p-4 font-bold text-gray-900">{formatZAR(product.price)}</td>
                       <td className="p-4 text-gray-700">{product.stock}</td>
                       <td className="p-4">
-                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${AVAILABILITY_STYLES[product.availability]}`}>
-                          {AVAILABILITY_LABELS[product.availability]}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${AVAILABILITY_STYLES[product.availability]}`}>
+                            {AVAILABILITY_LABELS[product.availability]}
+                          </span>
+                          <ApprovalBadge status={product.approvalStatus} />
+                        </div>
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">

@@ -14,6 +14,7 @@ import { adminDashboardRouter } from './routes/dashboard.routes.js';
 import { uploadsRouter } from './routes/uploads.routes.js';
 import { adminStoreOwnerApplicationsRouter, storeOwnerApplicationsRouter } from './routes/storeOwnerApplications.routes.js';
 import { storeOwnersRouter } from './routes/storeOwners.routes.js';
+import { approvalsRouter } from './routes/approvals.routes.js';
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use('/api/admin/uploads', uploadsRouter);
 app.use('/api/store-owner-applications', storeOwnerApplicationsRouter);
 app.use('/api/admin/store-owner-applications', adminStoreOwnerApplicationsRouter);
 app.use('/api/admin/store-owners', storeOwnersRouter);
+app.use('/api/admin/approvals', approvalsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

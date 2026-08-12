@@ -13,8 +13,14 @@ storesRouter.get('/:id', controller.getPublicStore);
 export const adminStoresRouter = Router();
 adminStoresRouter.use(requireAuth);
 adminStoresRouter.get('/', controller.listMyStores);
-adminStoresRouter.post('/', requireRole('super_admin'), controller.createStore);
+// Any approved admin can create their own store now (it starts pending —
+// see controller.createStore); only super_admin still gets to skip review.
+adminStoresRouter.post('/', requireRole('store_admin', 'super_admin'), controller.createStore);
 adminStoresRouter.put('/:id', requireStoreAccess(storeIdFromParam('id')), controller.updateStore);
 adminStoresRouter.get('/:id/admins', requireStoreAccess(storeIdFromParam('id')), controller.getStoreAdmins);
 adminStoresRouter.post('/:id/admins', requireStoreAccess(storeIdFromParam('id')), controller.addStoreAdmin);
 adminStoresRouter.delete('/:id/admins/:userId', requireStoreAccess(storeIdFromParam('id')), controller.removeStoreAdmin);
+// super_admin only — a store_admin can never reach these, so they can never
+// approve their own (or anyone else's) submission.
+adminStoresRouter.post('/:id/approve', requireRole('super_admin'), controller.approveStore);
+adminStoresRouter.post('/:id/reject', requireRole('super_admin'), controller.rejectStore);

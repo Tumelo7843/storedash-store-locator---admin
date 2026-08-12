@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { openingHoursSchema, optionalString, paginationQuerySchema } from './common.js';
+import { approvalStatusEnumSchema, openingHoursSchema, optionalString, paginationQuerySchema } from './common.js';
 
 export const listStoresQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().max(200).optional(),
@@ -9,6 +9,9 @@ export const listStoresQuerySchema = paginationQuerySchema.extend({
   maxLat: z.coerce.number().optional(),
   minLng: z.coerce.number().optional(),
   maxLng: z.coerce.number().optional(),
+  // Admin-only filter (e.g. the Approvals page asking for `pending`); ignored
+  // on public reads, which always force approvalStatus='approved' server-side.
+  approvalStatus: approvalStatusEnumSchema.optional(),
 });
 
 const latLngSchema = z.object({

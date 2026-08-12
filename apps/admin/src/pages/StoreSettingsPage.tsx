@@ -1,6 +1,7 @@
 import type { OpeningHours, Store } from '@storedash/shared';
 import { CheckCircle2, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { ApprovalStatusBanner } from '../components/ApprovalStatusBanner';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { DEFAULT_HOURS, OpeningHoursEditor } from '../components/OpeningHoursEditor';
 import { EmptyState } from '../components/ui/States';
@@ -65,6 +66,8 @@ export function StoreSettingsPage() {
       </div>
 
       {error && <p className="text-xs font-semibold text-rose-600 bg-rose-50 p-3 rounded-lg">{error}</p>}
+
+      <ApprovalStatusBanner status={currentStore.approvalStatus} rejectionReason={currentStore.rejectionReason} />
 
       <Section title="Profile">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

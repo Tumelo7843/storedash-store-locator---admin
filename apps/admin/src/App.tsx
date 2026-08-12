@@ -7,6 +7,7 @@ import { StoreProvider } from './context/StoreContext';
 import { AccountPage } from './pages/AccountPage';
 import { AdminsPage } from './pages/AdminsPage';
 import { ApplicationsPage } from './pages/ApplicationsPage';
+import { ApprovalsPage } from './pages/ApprovalsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { LoginPage } from './pages/LoginPage';
@@ -51,6 +52,16 @@ function AppRoutes() {
       <Route path="/store-settings" element={<RequireAuth><StoreSettingsPage /></RequireAuth>} />
       <Route path="/admins" element={<RequireAuth><AdminsPage /></RequireAuth>} />
       <Route path="/stores/new" element={<RequireAuth><NewStorePage /></RequireAuth>} />
+      <Route
+        path="/approvals"
+        element={
+          <RequireAuth>
+            <RequireSuperAdmin>
+              <ApprovalsPage />
+            </RequireSuperAdmin>
+          </RequireAuth>
+        }
+      />
       <Route
         path="/applications"
         element={

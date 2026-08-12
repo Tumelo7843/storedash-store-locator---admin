@@ -14,7 +14,7 @@ export interface PlaceOrderItemInput {
 // prevents a customer from tampering with order totals.
 export async function placeOrder(user: DbUser, storeId: number, items: PlaceOrderItemInput[]) {
   const [store] = await db.select().from(stores).where(eq(stores.id, storeId)).limit(1);
-  if (!store || store.status !== 'active') throw AppError.notFound('Store not found');
+  if (!store || store.status !== 'active' || store.approvalStatus !== 'approved') throw AppError.notFound('Store not found');
 
   const productIds = items.map((i) => i.productId);
   const productRows = await db.select().from(products).where(inArray(products.id, productIds));
@@ -28,7 +28,10 @@ export async function placeOrder(user: DbUser, storeId: number, items: PlaceOrde
     if (!product || product.storeId !== storeId) {
       throw AppError.badRequest(`Product ${item.productId} is not available at this store`);
     }
-    if (!product.isActive || product.stock < item.quantity) {
+    if (!product.isActive || product.approvalStatus !== 'approved') {
+      throw AppError.badRequest(`Product ${item.productId} is not available at this store`);
+    }
+    if (product.stock < item.quantity) {
       throw AppError.conflict(`"${product.name}" does not have enough stock (requested ${item.quantity}, available ${product.stock})`);
     }
     const unitPrice = Number(product.price);

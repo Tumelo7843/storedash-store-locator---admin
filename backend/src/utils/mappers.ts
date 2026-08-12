@@ -41,6 +41,10 @@ export function toStoreDTO(row: StoreRow): Store {
     deliveryAvailable: row.deliveryAvailable,
     pickupAvailable: row.pickupAvailable,
     openingHours: (row.openingHours as OpeningHours | null) ?? null,
+    approvalStatus: row.approvalStatus,
+    reviewedBy: row.reviewedBy,
+    reviewedAt: row.reviewedAt ? row.reviewedAt.toISOString() : null,
+    rejectionReason: row.rejectionReason,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -67,6 +71,10 @@ export function toProductDTO(row: ProductRow): Product {
     imageUrl: row.imageUrl,
     description: row.description,
     unit: row.unit,
+    approvalStatus: row.approvalStatus,
+    reviewedBy: row.reviewedBy,
+    reviewedAt: row.reviewedAt ? row.reviewedAt.toISOString() : null,
+    rejectionReason: row.rejectionReason,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -83,6 +91,10 @@ export function toServiceDTO(row: ServiceRow): Service {
     isActive: row.isActive,
     imageUrl: row.imageUrl,
     description: row.description,
+    approvalStatus: row.approvalStatus,
+    reviewedBy: row.reviewedBy,
+    reviewedAt: row.reviewedAt ? row.reviewedAt.toISOString() : null,
+    rejectionReason: row.rejectionReason,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

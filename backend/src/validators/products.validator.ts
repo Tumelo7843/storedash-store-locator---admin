@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { optionalString, paginationQuerySchema } from './common.js';
+import { approvalStatusEnumSchema, optionalString, paginationQuerySchema } from './common.js';
 
 export const listProductsQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().max(200).optional(),
@@ -7,6 +7,9 @@ export const listProductsQuerySchema = paginationQuerySchema.extend({
   storeId: z.coerce.number().int().positive().optional(),
   // Admin-only filter to include inactive products; ignored on public reads.
   includeInactive: z.coerce.boolean().default(false),
+  // Admin-only filter (e.g. the Approvals page asking for `pending`); ignored
+  // on public reads, which always force approvalStatus='approved' server-side.
+  approvalStatus: approvalStatusEnumSchema.optional(),
 });
 
 export const createProductSchema = z.object({

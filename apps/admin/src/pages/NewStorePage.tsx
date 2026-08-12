@@ -13,9 +13,11 @@ export function NewStorePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  if (profile?.role !== 'super_admin') {
-    return <EmptyState title="Not authorized" description="Only platform administrators can create new stores." />;
+  if (profile?.role !== 'store_admin' && profile?.role !== 'super_admin') {
+    return <EmptyState title="Not authorized" description="Only approved store owners can create new stores." />;
   }
+
+  const isSuperAdmin = profile.role === 'super_admin';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +38,10 @@ export function NewStorePage() {
   return (
     <form onSubmit={handleSubmit} className="flex-1 p-4 md:p-8 max-w-lg flex flex-col gap-4">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Store</h1>
-      <p className="text-sm text-gray-500 -mt-3 mb-2">You'll be added as the first admin. You can add more details on the Store Settings page after creating it.</p>
+      <p className="text-sm text-gray-500 -mt-3 mb-2">
+        You'll be added as the first admin. You can add more details on the Store Settings page after creating it.
+        {!isSuperAdmin && ' A Super Admin needs to approve it before it appears to customers.'}
+      </p>
 
       {error && <p className="text-xs font-semibold text-rose-600 bg-rose-50 p-3 rounded-lg">{error}</p>}
 

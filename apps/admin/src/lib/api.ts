@@ -1,5 +1,7 @@
 import type {
   ApplicationStatus,
+  ApprovalStatus,
+  ApprovalSummary,
   DashboardMetrics,
   Order,
   OrderStatus,
@@ -78,11 +80,15 @@ export const getMe = () => request<{ data: ManagedProfile }>('/api/auth/me').the
 export const syncProfile = () => request<{ data: UserProfile }>('/api/auth/sync', { method: 'POST' }).then((r) => r.data);
 
 // ---- Stores ----
-export const fetchMyStores = () => request<{ data: Store[] }>('/api/admin/stores?limit=100').then((r) => r.data);
+export const fetchMyStores = (params: { approvalStatus?: ApprovalStatus } = {}) =>
+  request<{ data: Store[] }>(`/api/admin/stores${toQuery({ limit: 100, ...params })}`).then((r) => r.data);
 export const createStore = (data: Partial<Store>) =>
   request<{ data: Store }>('/api/admin/stores', { method: 'POST', body: JSON.stringify(data) }).then((r) => r.data);
 export const updateStore = (id: number, data: Partial<Store>) =>
   request<{ data: Store }>(`/api/admin/stores/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then((r) => r.data);
+export const approveStore = (id: number) => request<{ data: Store }>(`/api/admin/stores/${id}/approve`, { method: 'POST' }).then((r) => r.data);
+export const rejectStore = (id: number, reason: string) =>
+  request<{ data: Store }>(`/api/admin/stores/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }).then((r) => r.data);
 
 export interface StoreAdminRow {
   id: number;
@@ -98,7 +104,9 @@ export const removeStoreAdmin = (storeId: number, userId: number) =>
   request(`/api/admin/stores/${storeId}/admins/${userId}`, { method: 'DELETE' });
 
 // ---- Products ----
-export async function fetchMyProducts(params: { storeId?: number; search?: string; page?: number; limit?: number } = {}) {
+export async function fetchMyProducts(
+  params: { storeId?: number; search?: string; page?: number; limit?: number; approvalStatus?: ApprovalStatus } = {},
+) {
   const { data, pagination } = await request<{ data: Product[]; pagination: ApiPagination }>(`/api/admin/products${toQuery(params)}`);
   return { items: data, ...pagination };
 }
@@ -107,9 +115,14 @@ export const createProduct = (data: Partial<Product> & { storeId: number }) =>
 export const updateProduct = (id: number, data: Partial<Product>) =>
   request<{ data: Product }>(`/api/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then((r) => r.data);
 export const deleteProduct = (id: number) => request(`/api/admin/products/${id}`, { method: 'DELETE' });
+export const approveProduct = (id: number) => request<{ data: Product }>(`/api/admin/products/${id}/approve`, { method: 'POST' }).then((r) => r.data);
+export const rejectProduct = (id: number, reason: string) =>
+  request<{ data: Product }>(`/api/admin/products/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }).then((r) => r.data);
 
 // ---- Services ----
-export async function fetchMyServices(params: { storeId?: number; search?: string; page?: number; limit?: number } = {}) {
+export async function fetchMyServices(
+  params: { storeId?: number; search?: string; page?: number; limit?: number; approvalStatus?: ApprovalStatus } = {},
+) {
   const { data, pagination } = await request<{ data: Service[]; pagination: ApiPagination }>(`/api/admin/services${toQuery(params)}`);
   return { items: data, ...pagination };
 }
@@ -118,6 +131,9 @@ export const createService = (data: Partial<Service> & { storeId: number }) =>
 export const updateService = (id: number, data: Partial<Service>) =>
   request<{ data: Service }>(`/api/admin/services/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then((r) => r.data);
 export const deleteService = (id: number) => request(`/api/admin/services/${id}`, { method: 'DELETE' });
+export const approveService = (id: number) => request<{ data: Service }>(`/api/admin/services/${id}/approve`, { method: 'POST' }).then((r) => r.data);
+export const rejectService = (id: number, reason: string) =>
+  request<{ data: Service }>(`/api/admin/services/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }).then((r) => r.data);
 
 // ---- Orders ----
 export async function fetchAdminOrders(params: { storeId?: number; status?: OrderStatus; page?: number; limit?: number } = {}) {
@@ -138,6 +154,9 @@ export const approveApplication = (id: number) =>
   request<{ data: { storeId: number } }>(`/api/admin/store-owner-applications/${id}/approve`, { method: 'POST' }).then((r) => r.data);
 export const rejectApplication = (id: number, reason: string) =>
   request(`/api/admin/store-owner-applications/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) });
+
+// ---- Approvals (super_admin) ----
+export const fetchApprovalSummary = () => request<{ data: ApprovalSummary }>('/api/admin/approvals/summary').then((r) => r.data);
 
 // ---- Store owners (super_admin) ----
 export const fetchStoreOwners = () => request<{ data: StoreOwnerSummary[] }>('/api/admin/store-owners').then((r) => r.data);

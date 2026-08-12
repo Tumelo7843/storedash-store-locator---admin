@@ -22,6 +22,21 @@ plain TypeScript types.
 - **Currency/units**: South African Rand (ZAR, formatted `R 1,234.56`) and South African address
   conventions (province, postal code) throughout — see §24.
 
+## Store/product/service approval workflow — 2026-08-12
+
+Full reference: §26. Summary: a `store_admin` can now create their own stores, products, and
+services directly (previously only a `super_admin` could create a store at all) — but nothing a
+`store_admin` creates is visible to customers until a `super_admin` approves it. New
+`approval_status` column (`pending` / `approved` / `rejected`) on `stores`, `products`, and
+`services`, migration `backend/drizzle/0002_chunky_deathbird.sql` (hand-patched to backfill existing
+rows as `approved` — see §26 for why the generated migration wasn't safe to run as-is). New
+**Approvals** page in the admin app (super_admin only) with pending/approved/rejected tabs per
+entity type, and a notification badge in the sidebar (also added to the existing **Applications**
+nav item) backed by a new `GET /api/admin/approvals/summary` endpoint. A rejected item's owner sees
+the rejection reason and can resubmit it for review just by editing and saving. This is layered on
+top of, and doesn't change, the store-owner *application* flow from §23 — approving an application
+still auto-approves the resulting store (fixed as part of this change; see §26).
+
 ## Authentication follow-up fixes — 2026-08-12
 
 A round of fixes and additions on top of the 2026-08-11 authentication work below, in response to
@@ -568,20 +583,25 @@ bypass because the underlying query never included them.
 
 ## 14. How to add a new store
 
-Two paths create a store, and both end up in exactly the same place — a row in `stores` plus a
-`store_admins` link — because the second path is implemented as a super_admin acting through the
-same primitives, not a separate parallel system:
+Three paths create a store, and all three end up in exactly the same place — a row in `stores` plus
+a `store_admins` link:
 
-1. **Self-service (typical path)**: a customer requests store-owner access with their business
-   details, a `super_admin` approves it, and approval creates the store automatically from the
-   application's data. This is the flow most real store owners go through — see §23.
-2. **Direct creation (super_admin only)**: `POST /api/admin/stores`, gated by
-   `requireRole('super_admin')` in `backend/src/routes/stores.routes.ts` — creating a store directly
-   establishes ownership, so it isn't self-service for a plain `store_admin`. In the admin app, a
-   `super_admin` sees a **Create Store** item in the sidebar (`apps/admin/src/pages/NewStorePage.tsx`).
-   The creator is automatically added as the first admin of the new store. Useful for a super_admin
-   onboarding a store owner directly (e.g. over email/phone) without making them fill out the
-   in-app application form.
+1. **Self-service application (typical path for a brand-new store owner)**: a customer requests
+   store-owner access with their business details, a `super_admin` approves it, and approval creates
+   the store automatically from the application's data, already approved (see §23 and §26). This is
+   how someone becomes a `store_admin` in the first place.
+2. **Direct creation by an existing store_admin**: once approved, a `store_admin` can create
+   additional stores of their own directly — `POST /api/admin/stores`, gated by
+   `requireRole('store_admin', 'super_admin')` in `backend/src/routes/stores.routes.ts`. Unlike the
+   application path, this store starts `approvalStatus: 'pending'` and is invisible to customers
+   until a `super_admin` reviews it (§26) — a `store_admin` creating their own store still hasn't had
+   *that specific store's* details reviewed, even though they're already an approved admin.
+3. **Direct creation by a super_admin**: same endpoint, but a `super_admin`'s own creation is
+   auto-approved (self-review would be meaningless — they already have unrestricted access). In the
+   admin app, a **Create Store** sidebar item (`apps/admin/src/pages/NewStorePage.tsx`) is available
+   to any signed-in admin — the page itself, and the backend independently, both gate on role.
+
+In every case, the creator is automatically added as the first admin of the new store.
 
 ## 15. How to create an admin for a store
 
@@ -605,11 +625,11 @@ inserts the `store_admins` row.
 Both `products` and `services` have a required `storeId` foreign key (`ON DELETE CASCADE` — 
 deleting a store deletes its products/services/orders along with it). Every admin create/update
 route verifies store access using that row's real `storeId` (§12), and every public read route
-(`GET /api/products`, `GET /api/services`) only returns rows where `isActive` is true, scoped to
-the requested `storeId` when the customer app is viewing a specific store's page. Product
-availability (`in_stock` / `low_stock` / `out_of_stock`) is derived server-side from `stock` and
-`isActive` on every response — it is never stored as a separate field that could drift from the
-real stock count.
+(`GET /api/products`, `GET /api/services`) only returns rows where `isActive` is true **and**
+`approvalStatus` is `'approved'` (§26), scoped to the requested `storeId` when the customer app is
+viewing a specific store's page. Product availability (`in_stock` / `low_stock` / `out_of_stock`) is
+derived server-side from `stock` and `isActive` on every response — it is never stored as a separate
+field that could drift from the real stock count.
 
 ## 17. How maps and directions work
 
@@ -1226,3 +1246,189 @@ against the real project and database, test data cleaned up afterward):
   is the one piece of this round that genuinely can't be verified without a browser.
 - `tsc --noEmit` and `vite build` re-confirmed clean for `backend`, `apps/customer`, and
   `apps/admin` after all of the above.
+
+## 26. Store/product/service approval workflow
+
+This section covers *per-item* approval — a `super_admin` reviewing an individual store, product,
+or service before it goes live. It's a different, additive layer on top of §23's store-owner
+*application* flow (a customer requesting the `store_admin` role in the first place); read §12–13
+and §23 first if you haven't already.
+
+### Why this exists, and how it's separate from `stores.status`
+
+Before this, only a `super_admin` could create a store at all (§14 old text), so every product/
+service ever created belonged to an already-vetted store. Now that a `store_admin` can create
+stores directly, that guarantee is gone — so every store, product, and service a `store_admin`
+creates starts **invisible to customers** until reviewed.
+
+This is a separate axis from the existing `stores.status` (`active`/`inactive`) and
+`products.isActive`/`services.isActive` columns, which remain exactly what they were: the owner's
+own on/off toggle for something *already approved*. A public read now requires **both** to be true
+— `status: 'active'` (or `isActive: true`) **and** `approvalStatus: 'approved'`. Toggling a store to
+`inactive` doesn't touch `approvalStatus`, and getting approved doesn't force a store `active` —
+they're independent, same as before this change.
+
+### Schema
+
+New enum and columns, migration `backend/drizzle/0002_chunky_deathbird.sql`
+(`backend/src/db/schema.ts`):
+
+```
+approval_status: enum('pending', 'approved', 'rejected')
+```
+
+Added to `stores`, `products`, and `services` — each gets `approvalStatus` (default `'pending'`),
+`reviewedBy` (FK → `users.id`, nullable), `reviewedAt` (nullable), `rejectionReason` (nullable). The
+shape deliberately mirrors `store_owner_applications`' own review columns (§23) for consistency.
+
+**The generated migration was not safe to run as-is** and was hand-edited before applying: Drizzle's
+`drizzle-kit generate` naturally produces `ADD COLUMN approval_status ... DEFAULT 'pending' NOT
+NULL`, which would have backfilled every *already-live* store/product/service to `pending` and
+instantly hidden them from customers. The applied migration instead adds the column with `DEFAULT
+'approved' NOT NULL` first (backfilling existing rows as already-approved, since they were already
+live before this column existed), then a second `ALTER COLUMN ... SET DEFAULT 'pending'` so
+everything inserted from here on defaults to pending. Confirmed live after migrating: both
+pre-existing stores in this project's database came through as `approved`, and the column's
+forward-looking default is `pending`. If you ever add a similar status column to an existing table
+with live data, use this same two-step default pattern — never a single `DEFAULT` matching the new,
+stricter value.
+
+Application code doesn't actually depend on that default, though — every insert path
+(`stores`/`products`/`services` controllers) sets `approvalStatus` explicitly based on the actor's
+role (below), so the column default is a fail-closed safety net, not the primary mechanism.
+
+### Who can create what, and what status it starts at
+
+| Actor | Can create | Starting `approvalStatus` |
+|---|---|---|
+| `customer` | Nothing (blocked by role checks / `userCanManageStore`) | — |
+| `store_admin` | Their own stores (`POST /api/admin/stores`), and products/services for stores they manage | `pending` |
+| `super_admin` | Anything, for any store | `approved` immediately, `reviewedBy`/`reviewedAt` set to themselves |
+
+A `super_admin`'s own creations skip the queue because self-review is meaningless — they already
+have unrestricted platform access (the "Super Admin retains unrestricted management access"
+requirement). This is enforced in each controller
+(`stores.controller.ts`/`products.controller.ts`/`storeServices.controller.ts`'s `createStore`/
+`createProduct`/`createService`), not the frontend — a request forged to look like it came from the
+admin app still gets `pending` unless the *verified* Firebase token actually belongs to a
+`super_admin`.
+
+### Approve / reject
+
+New endpoints, `requireRole('super_admin')` only, alongside each entity's existing routes:
+
+| Method | Path |
+|---|---|
+| `POST` | `/api/admin/stores/:id/approve` |
+| `POST` | `/api/admin/stores/:id/reject` (body `{ "reason": "..." }`, required) |
+| `POST` | `/api/admin/products/:id/approve` / `/:id/reject` |
+| `POST` | `/api/admin/services/:id/approve` / `/:id/reject` |
+
+Each is row-locked (`.for('update')`, same pattern as `approveApplication` in §23) and rejects with
+409 if the item isn't currently in a state that transition applies to (e.g. approving an
+already-approved store) — this is what makes a double-click, or a race between two browser tabs,
+safe. **A `store_admin` can never approve or reject anything, including their own submissions** — not
+because of an explicit self-approval check, but because `requireRole('super_admin')` means they can
+never reach these routes at all, regardless of whose item it is.
+
+`GET /api/admin/stores`, `/api/admin/products`, `/api/admin/services` (the existing "my items" list
+endpoints, §12) all accept an optional `?approvalStatus=pending|approved|rejected` filter now — this
+is what both the Approvals page (a `super_admin` asking for every pending item platform-wide) and an
+ordinary `store_admin`'s own dashboard (filtering their own items) use; a `store_admin` still only
+ever sees their own stores' rows regardless of this filter, same scoping as before (§13).
+
+### Resubmitting after rejection
+
+There's no separate "resubmit" button or endpoint. Saving an edit (`PUT /api/admin/{stores,products,
+services}/:id`) to something currently `rejected`, by anyone other than a `super_admin`, automatically
+flips it back to `pending` and clears `reviewedBy`/`reviewedAt`/`rejectionReason` as part of that same
+update — see the `resubmitIfRejected` option threaded through `updateStore`/`updateProduct`/
+`updateService` in `backend/src/services/`. A `super_admin`'s own edits never trigger this (their
+edits stay authoritative — editing a pending item doesn't change its status either; approve/reject
+are the only things that do). One deliberate scope decision: editing an already-*approved* item does
+**not** revert it to pending, even though a stricter marketplace might require re-review after every
+change — only the explicit reject→edit→pending cycle exists. If you need stricter re-review-on-every-
+edit later, that's a larger behavior change, not a bug in the current implementation.
+
+### Notifications
+
+No notification table exists (or is needed) — a `super_admin`'s pending count is computed live,
+not stored/pushed. `GET /api/admin/approvals/summary` (`backend/src/services/approvals.service.ts`,
+`requireRole('super_admin')`) returns:
+
+```json
+{ "pendingStores": 2, "pendingProducts": 5, "pendingServices": 1, "pendingApplications": 3, "total": 11 }
+```
+
+`apps/admin/src/lib/useApprovalSummary.ts` polls this every 30 seconds (only when the signed-in user
+is a `super_admin`) and feeds two sidebar badges in `AdminLayout.tsx`: **Approvals**
+(`pendingStores + pendingProducts + pendingServices`) and **Applications** (`pendingApplications`,
+§23) — each a small red count badge, and each link takes you straight to the relevant page. This is
+polling, not push — a badge can be up to 30 seconds stale, which is an intentional simplicity
+tradeoff for something this low-stakes (see the comment in `useApprovalSummary.ts` if you ever want
+to swap it for something live).
+
+### Admin UI
+
+- **Approvals** (`apps/admin/src/pages/ApprovalsPage.tsx`, super_admin only, `/approvals`): tabs for
+  Stores / Products / Services, each with a pending/approved/rejected/all filter. Approve is one
+  click; reject opens the same `RejectDialog` component (`apps/admin/src/components/RejectDialog.tsx`
+  — extracted from the existing Applications page so both queues share one implementation) requiring
+  a reason.
+- **Store Settings**, the product modal, and the service modal all show an `ApprovalStatusBanner`/
+  `ApprovalBadge` (`apps/admin/src/components/`) when something isn't `approved` yet — pending shows
+  an amber "awaiting review" notice, rejected shows the reason in red plus a note that saving
+  resubmits it. Nothing is shown for already-approved items, matching how `isActive`/`inactive` is
+  already displayed elsewhere.
+- **Create Store** moved out of the super_admin-only nav section — it's now a top-level sidebar item
+  available to any signed-in admin (`apps/admin/src/pages/NewStorePage.tsx` now checks for
+  `store_admin` **or** `super_admin`, not `super_admin` only), since everyone who reaches the admin
+  dashboard at all is already one of those two roles (§12's `isAuthorized` gate excludes plain
+  `customer`s before they ever see this nav).
+
+### Interaction with the store-owner application flow (§23)
+
+`approveApplication` (`backend/src/services/storeOwnerApplications.service.ts`) now explicitly sets
+`approvalStatus: 'approved'` (plus `reviewedBy`/`reviewedAt`) on the store it creates, rather than
+leaving it at the column default. Without this fix, a store created by approving an *application*
+would have landed back in the `pending` queue a second time — redundant, since a `super_admin`
+approving the application already reviewed the business. Confirmed live: submitting an application,
+approving it, and immediately checking the resulting store shows `approvalStatus: 'approved'`, not
+`pending`.
+
+### Order placement is also gated
+
+`placeOrder` (`backend/src/services/orders.service.ts`) checks `approvalStatus === 'approved'` on
+both the store and every product in the order, in addition to the pre-existing `status`/`isActive`
+checks — closing a real hole where a customer who somehow learned a pending store/product's numeric
+ID (it's never returned by any public list/search endpoint, but IDs are sequential and guessable)
+could otherwise have placed a real order against inventory a `super_admin` hasn't reviewed yet.
+
+### Testing this locally
+
+The full flow was tested live against this project's real database (not a mock) end to end:
+
+1. `store_admin` creates a store (`POST /api/admin/stores`) → confirmed `approvalStatus: 'pending'`
+   in the response, and confirmed `GET /api/stores` (public) returns zero matches for it.
+2. `GET /api/admin/approvals/summary` as `super_admin` → confirmed `pendingStores` incremented.
+3. `store_admin` attempting `POST /api/admin/stores/:id/approve` on their own store → confirmed 403
+   (can't reach the route — role check, not a self-approval check).
+4. `super_admin` approves it → confirmed `GET /api/stores` (public) now includes it.
+5. Same cycle repeated for a product and a service, plus: a *different* `store_admin` (managing a
+   different store) attempting to approve/reject it → confirmed 403; rejecting with a reason →
+   confirmed the owning `store_admin` sees `rejectionReason` on their own list; editing and saving
+   the rejected product → confirmed it flipped back to `approvalStatus: 'pending'` automatically and
+   `rejectionReason` cleared; approving it → confirmed it appeared in the public listing.
+   Re-approving an already-approved product → confirmed 409.
+6. Cross-store isolation: `store_admin` B attempting `PUT` on `store_admin` A's store → confirmed
+   403; `store_admin` A's own `GET /api/admin/stores` → confirmed it never lists B's stores.
+7. Order placement against a still-pending product → confirmed rejected (400, "not available at this
+   store"); against the same product once approved and in stock → confirmed the order succeeds.
+8. Store-owner application approval → confirmed the resulting store is `approved`, not `pending`
+   (the §23 interaction fix above).
+9. `tsc --noEmit` clean for `backend`, `apps/admin`, `apps/customer`, and `shared` after all of the
+   above.
+
+All test data created during this was deleted afterward (test stores/products/services/orders/
+application, and the test user's role reset to `customer`) — the database was left exactly as it was
+before testing, not just "cleaned up eventually."

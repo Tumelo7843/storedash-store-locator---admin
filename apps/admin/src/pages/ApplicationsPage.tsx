@@ -1,6 +1,7 @@
 import type { ApplicationStatus, StoreOwnerApplicationWithApplicant } from '@storedash/shared';
 import { Check, ClipboardList, Mail, MapPin, Phone, X } from 'lucide-react';
 import { useState } from 'react';
+import { RejectDialog } from '../components/RejectDialog';
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States';
 import { approveApplication, fetchApplications, rejectApplication } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
@@ -12,38 +13,6 @@ const STATUS_STYLES: Record<ApplicationStatus, string> = {
   approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   rejected: 'bg-rose-50 text-rose-700 border-rose-200',
 };
-
-function RejectDialog({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (reason: string) => void }) {
-  const [reason, setReason] = useState('');
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 flex flex-col gap-3">
-        <h3 className="text-base font-bold text-gray-900">Reject application</h3>
-        <p className="text-xs text-gray-500">Let the applicant know why. This is shown to them on their account page.</p>
-        <textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={3}
-          autoFocus
-          placeholder="e.g. Business address could not be verified."
-          className="input resize-none"
-        />
-        <div className="flex items-center justify-end gap-2 mt-1">
-          <button onClick={onCancel} className="px-3.5 py-2 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-100">
-            Cancel
-          </button>
-          <button
-            onClick={() => reason.trim() && onConfirm(reason.trim())}
-            disabled={!reason.trim()}
-            className="px-3.5 py-2 rounded-lg text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50"
-          >
-            Reject application
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ApplicationCard({ application, onChanged }: { application: StoreOwnerApplicationWithApplicant; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
@@ -134,7 +103,15 @@ function ApplicationCard({ application, onChanged }: { application: StoreOwnerAp
         </div>
       )}
 
-      {showReject && <RejectDialog onCancel={() => setShowReject(false)} onConfirm={handleReject} />}
+      {showReject && (
+        <RejectDialog
+          title="Reject application"
+          description="Let the applicant know why. This is shown to them on their account page."
+          confirmLabel="Reject application"
+          onCancel={() => setShowReject(false)}
+          onConfirm={handleReject}
+        />
+      )}
     </div>
   );
 }

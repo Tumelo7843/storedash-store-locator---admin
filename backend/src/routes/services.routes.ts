@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as controller from '../controllers/storeServices.controller.js';
 import { requireAuth } from '../middleware/auth.js';
-import { requireStoreAccess } from '../middleware/authorize.js';
+import { requireRole, requireStoreAccess } from '../middleware/authorize.js';
 import { resolveStoreIdForService } from '../services/storeAccess.service.js';
 import type { AuthedRequest } from '../middleware/auth.js';
 
@@ -23,3 +23,6 @@ adminServicesRouter.delete(
   requireStoreAccess(async (req: AuthedRequest) => resolveStoreIdForService(parseInt(req.params.id, 10))),
   controller.deleteService,
 );
+// super_admin only — a store_admin can never approve their own submission.
+adminServicesRouter.post('/:id/approve', requireRole('super_admin'), controller.approveService);
+adminServicesRouter.post('/:id/reject', requireRole('super_admin'), controller.rejectService);

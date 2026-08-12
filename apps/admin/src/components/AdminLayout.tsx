@@ -1,8 +1,9 @@
-import { ChevronDown, ClipboardList, LayoutDashboard, LogOut, Menu, Package, Settings, ShieldCheck, ShoppingBag, Sparkles, Store, Users, X } from 'lucide-react';
+import { CheckSquare, ChevronDown, ClipboardList, LayoutDashboard, LogOut, Menu, Package, Settings, ShieldCheck, ShoppingBag, Sparkles, Store, Users, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useStore } from '../context/StoreContext';
+import { useApprovalSummary } from '../lib/useApprovalSummary';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -11,7 +12,13 @@ const NAV_ITEMS = [
   { to: '/orders', label: 'Orders', icon: ShoppingBag },
   { to: '/store-settings', label: 'Store Settings', icon: Store },
   { to: '/admins', label: 'Store Admins', icon: Users },
+  { to: '/stores/new', label: 'Create Store', icon: Store },
 ];
+
+function NavBadge({ count }: { count: number }) {
+  if (!count) return null;
+  return <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">{count}</span>;
+}
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { profile, signOut } = useAuth();
@@ -20,6 +27,9 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const isSuperAdmin = profile?.role === 'super_admin';
+  const summary = useApprovalSummary(isSuperAdmin);
+  const pendingApprovals = (summary?.pendingStores ?? 0) + (summary?.pendingProducts ?? 0) + (summary?.pendingServices ?? 0);
 
   const sidebar = (
     <aside className="flex h-full flex-col w-64 shrink-0 bg-[#101922] text-gray-200 p-4">
@@ -86,19 +96,20 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
-        {profile?.role === 'super_admin' && (
+        {isSuperAdmin && (
           <>
+            <p className="px-3 pt-3 pb-1 text-[10px] font-bold uppercase text-gray-500 tracking-wide">Platform</p>
             <Link
-              to="/stores/new"
+              to="/approvals"
               onClick={() => setMobileOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === '/stores/new' ? 'bg-primary/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-800/80 hover:text-white'
+                location.pathname === '/approvals' ? 'bg-primary/20 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-800/80 hover:text-white'
               }`}
             >
-              <Store className="size-5" />
-              Create Store
+              <CheckSquare className="size-5" />
+              Approvals
+              <NavBadge count={pendingApprovals} />
             </Link>
-            <p className="px-3 pt-3 pb-1 text-[10px] font-bold uppercase text-gray-500 tracking-wide">Platform</p>
             <Link
               to="/applications"
               onClick={() => setMobileOpen(false)}
@@ -108,6 +119,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             >
               <ClipboardList className="size-5" />
               Applications
+              <NavBadge count={summary?.pendingApplications ?? 0} />
             </Link>
             <Link
               to="/store-owners"

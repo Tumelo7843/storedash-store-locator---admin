@@ -31,3 +31,12 @@ export const openingHoursSchema = z.object({
 export const idParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
+
+export const approvalStatusEnumSchema = z.enum(['pending', 'approved', 'rejected']);
+
+// Shared by every approve/reject action (stores, products, services) so the
+// "why was this rejected" message the owner sees is held to one consistent
+// shape across the app.
+export const rejectReasonSchema = z.object({
+  reason: z.string().trim().min(1).max(1000),
+});

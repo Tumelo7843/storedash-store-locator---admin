@@ -7,6 +7,10 @@ export type StoreStatus = 'active' | 'inactive';
 export type ProductAvailability = 'in_stock' | 'low_stock' | 'out_of_stock';
 export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
+// Same shape as ApplicationStatus but conceptually distinct: this gates
+// whether a store/product/service row itself is visible to customers,
+// applied per-row rather than to a one-time store-owner account application.
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 
 export interface DayHours {
   open: string; // "HH:MM" 24h
@@ -99,6 +103,13 @@ export interface Store {
   deliveryAvailable: boolean;
   pickupAvailable: boolean;
   openingHours: OpeningHours | null;
+  // Super_admin approval gate — separate from `status` above. A store must be
+  // approvalStatus 'approved' (as well as status 'active') to show to
+  // customers. See docs/README §"Approval workflow".
+  approvalStatus: ApprovalStatus;
+  reviewedBy: number | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -118,6 +129,10 @@ export interface Product {
   imageUrl: string | null;
   description: string | null;
   unit: string | null;
+  approvalStatus: ApprovalStatus;
+  reviewedBy: number | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -132,6 +147,10 @@ export interface Service {
   isActive: boolean;
   imageUrl: string | null;
   description: string | null;
+  approvalStatus: ApprovalStatus;
+  reviewedBy: number | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -180,6 +199,16 @@ export interface ApiErrorBody {
     code: string;
     details?: unknown;
   };
+}
+
+// Counts backing the Super Admin's notification badge — see
+// backend/src/services/approvals.service.ts.
+export interface ApprovalSummary {
+  pendingStores: number;
+  pendingProducts: number;
+  pendingServices: number;
+  pendingApplications: number;
+  total: number;
 }
 
 export interface DashboardMetrics {

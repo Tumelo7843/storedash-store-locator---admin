@@ -17,6 +17,13 @@ export const userRoleEnum = pgEnum('user_role', ['customer', 'store_admin', 'sup
 export const storeStatusEnum = pgEnum('store_status', ['active', 'inactive']);
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'completed', 'cancelled']);
 export const applicationStatusEnum = pgEnum('application_status', ['pending', 'approved', 'rejected']);
+// Distinct from applicationStatusEnum even though the values are identical:
+// this gates whether a store/product/service is visible to customers at all,
+// applied per-row rather than to a one-time account application. A super_admin
+// creating a row is auto-approved; a store_admin's row starts pending until
+// reviewed (see backend/src/services/{stores,products,storeServices}.service.ts
+// approve*/reject* functions and docs/README §"Approval workflow").
+export const approvalStatusEnum = pgEnum('approval_status', ['pending', 'approved', 'rejected']);
 
 // Firebase Auth is the identity provider; this table mirrors the subset of
 // profile data the app needs plus the authorization role. Role starts as
@@ -62,6 +69,14 @@ export const stores = pgTable('stores', {
   pickupAvailable: boolean('pickup_available').notNull().default(true),
   // { mon: { open: "09:00", close: "21:00", closed: false }, ... }
   openingHours: jsonb('opening_hours'),
+  // Separate from `status` above: `status` is the owner's own on/off toggle
+  // for an already-approved store; `approvalStatus` is the super_admin gate
+  // that must be 'approved' before it's eligible to show to customers at all,
+  // regardless of `status`. See approvalStatusEnum comment.
+  approvalStatus: approvalStatusEnum('approval_status').notNull().default('pending'),
+  reviewedBy: integer('reviewed_by').references(() => users.id, { onDelete: 'set null' }),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  rejectionReason: text('rejection_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -137,6 +152,10 @@ export const products = pgTable(
     imageUrl: text('image_url'),
     description: text('description'),
     unit: text('unit'),
+    approvalStatus: approvalStatusEnum('approval_status').notNull().default('pending'),
+    reviewedBy: integer('reviewed_by').references(() => users.id, { onDelete: 'set null' }),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    rejectionReason: text('rejection_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -159,6 +178,10 @@ export const services = pgTable(
     isActive: boolean('is_active').notNull().default(true),
     imageUrl: text('image_url'),
     description: text('description'),
+    approvalStatus: approvalStatusEnum('approval_status').notNull().default('pending'),
+    reviewedBy: integer('reviewed_by').references(() => users.id, { onDelete: 'set null' }),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    rejectionReason: text('rejection_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
