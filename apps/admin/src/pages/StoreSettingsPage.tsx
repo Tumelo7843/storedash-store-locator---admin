@@ -3,6 +3,7 @@ import { CheckCircle2, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ApprovalStatusBanner } from '../components/ApprovalStatusBanner';
 import { ImageUploadField } from '../components/ImageUploadField';
+import { LocationSection } from '../components/LocationSection';
 import { DEFAULT_HOURS, OpeningHoursEditor } from '../components/OpeningHoursEditor';
 import { EmptyState } from '../components/ui/States';
 import { useStore } from '../context/StoreContext';
@@ -94,47 +95,11 @@ export function StoreSettingsPage() {
       </Section>
 
       <Section title="Location">
-        <Field label="Street Address">
-          <input value={form.address} onChange={(e) => set('address', e.target.value)} required className="input" />
-        </Field>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Field label="City">
-            <input value={form.city} onChange={(e) => set('city', e.target.value)} required className="input" />
-          </Field>
-          <Field label="Province">
-            <input value={form.state} onChange={(e) => set('state', e.target.value)} required className="input" />
-          </Field>
-          <Field label="Postal Code">
-            <input value={form.postalCode} onChange={(e) => set('postalCode', e.target.value)} required className="input" />
-          </Field>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Latitude">
-            <input
-              type="number"
-              step="any"
-              value={form.lat ?? ''}
-              onChange={(e) => set('lat', e.target.value === '' ? null : Number(e.target.value))}
-              className="input"
-            />
-          </Field>
-          <Field label="Longitude">
-            <input
-              type="number"
-              step="any"
-              value={form.lng ?? ''}
-              onChange={(e) => set('lng', e.target.value === '' ? null : Number(e.target.value))}
-              className="input"
-            />
-          </Field>
-        </div>
-        <p className="text-xs text-gray-400 -mt-2">
-          Leave blank if unknown — the store won't appear on the customer map until coordinates are set. Find coordinates by searching your address on{' '}
-          <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" className="text-primary hover:underline">
-            openstreetmap.org
-          </a>{' '}
-          and copying the lat/lon from the URL.
-        </p>
+        <LocationSection
+          value={{ address: form.address, city: form.city, state: form.state, postalCode: form.postalCode, lat: form.lat, lng: form.lng }}
+          onChange={(patch) => setForm((prev) => (prev ? { ...prev, ...patch } : prev))}
+          resetKey={currentStore.id}
+        />
       </Section>
 
       <Section title="Contact">
