@@ -1,10 +1,56 @@
 # StoreDash
+<!-- website link -->
+https://storedash-store-locator-admin-custo.vercel.app/
 
 A multi-store marketplace and store-locator platform: a public **customer** website for
 discovering nearby stores, browsing products/services, and placing orders, plus a private
-**admin** website for store owners to manage their own store(s). Backend and database are
-shared; the two frontends are separate deployable applications with no shared code beyond
-plain TypeScript types.
+**admin** website for store owners to manage their own store(s), plus a native **mobile** app
+(Expo/React Native, Android-first) that gives customers the same discovery/ordering experience
+on-device. Backend and database are shared across all three; each client is a separate
+deployable with no shared code beyond plain TypeScript types.
+
+## Mobile app audit and fixes — 2026-08-13
+
+Full reference: §29 (`apps/mobile`) and [apps/mobile/README.md](apps/mobile/README.md). Summary:
+audited the mobile app end-to-end (Expo Router navigation, Firebase auth, API client vs. every
+backend route/validator/response shape, auth gating on every protected screen) and found the API
+integration itself already correct — no endpoint, request-body, or response-shape mismatches. Two
+real, build-blocking problems were found and fixed:
+
+- **The failing development build's actual cause**: `expo-firebase-recaptcha` (used only for
+  phone-number sign-in) depends on `expo-firebase-core@6.0.0`, an abandoned package whose Android
+  build pins `com.google.firebase:firebase-core:21.1.0` — a Firebase Android artifact Google
+  discontinued years ago (folded into `firebase-analytics` ~2020) — plus Kotlin 1.6.10, both
+  incompatible with this project's Expo SDK 57 / React Native 0.86 toolchain. This is what was
+  actually breaking native Android builds. Fixed by removing `expo-firebase-recaptcha` and
+  `expo-firebase-core` entirely and removing the phone sign-in method from `sign-in.tsx`/
+  `sign-up.tsx` (email + Google sign-in, both fully Firebase-JS-SDK-based, are unaffected and
+  remain the two sign-in methods).
+- **Stray, wrongly-scoped EAS config**: an untracked `eas.json`/`app.json` pair had been created at
+  the **repo root** (different EAS project ID and Android package than the real ones in
+  `apps/mobile`) — almost certainly from `eas init`/`eas build:configure` being run from the repo
+  root instead of `apps/mobile` at some point. Deleted (confirmed with the user first); all EAS
+  commands must be run from inside `apps/mobile`.
+- **Missing build-time env vars**: `apps/mobile/src/lib/env.ts` throws at bundle-evaluation time if
+  any required `EXPO_PUBLIC_*` var is missing — correct behavior locally, but `apps/mobile/.env` is
+  git-ignored so EAS's cloud build servers never saw it, meaning a cloud-built APK could crash
+  immediately on launch. Fixed by adding an `env` block with the (non-secret, browser-bundle-safe —
+  same trust model as this repo's `VITE_*` values) `EXPO_PUBLIC_*` values to every profile in
+  `apps/mobile/eas.json`, per [Expo's documented pattern](https://docs.expo.dev/build-reference/variables/)
+  for build-time env vars.
+- Also deduplicated a stray second copy of `react` in the dependency tree (`npm dedupe`, plus
+  `expo.install.exclude` in `apps/mobile/package.json` to silence the resulting harmless
+  patch-version advisory) — two React copies in one native bundle is a classic "Invalid hook call"
+  crash risk. `npx expo-doctor` now reports 20/20 checks passing and `tsc --noEmit` is clean across
+  every workspace including `apps/mobile`.
+
+**⚠️ Also found during this pass**: a `grep` while confirming the mobile and backend Firebase
+projects matched accidentally printed `backend/.env`'s `FIREBASE_SERVICE_ACCOUNT_BASE64` in full —
+which base64-decodes directly to the Firebase Admin SDK private key — into an AI assistant's
+session transcript. **That key should be treated as exposed**: rotate it in Firebase Console >
+Project Settings > Service Accounts (generate a new key, delete the old one), then update
+`backend/.env` and the Render environment variable. The project IDs were confirmed to match
+(`shop-tracker-20d4e` on both sides), which is the thing that was actually being checked.
 
 ## 1. Project overview
 
@@ -1805,3 +1851,60 @@ should still walk through, since a mis-set item here would look identical from t
 - The account being tested actually has a password set on it (Firebase Console → Authentication →
   Users → find the user → check whether a password provider is genuinely present, or just try
   **Forgot password?** — it's non-destructive for an account with no password yet).
+
+## 29. Mobile app (`apps/mobile`)
+
+A native Android/iOS app (Expo + React Native, Expo Router) covering the same customer-facing
+surface as `apps/customer`: store discovery with a real map, product/service browsing, cart,
+checkout, order history, account management, and the store-owner application flow. It is a
+**separate client, not a re-skin** — its own `package.json`, its own hand-written API layer
+(`apps/mobile/src/api/*.ts`), its own Firebase client init — but talks to the **same** backend, the
+**same** database, and the **same** Firebase project as the two web apps. There is no mobile-only
+backend and no mobile-only API version; every endpoint it calls already exists for `apps/customer`
+(see §12 for how auth/authorization works — identical for all three clients, since it's all
+Firebase ID tokens verified the same way by `requireAuth`).
+
+```
+Mobile app (apps/mobile, Expo/EAS)
+        |
+        v
+   Backend API (backend, Render) ----> Firebase Admin SDK ----> Firebase Auth
+        |                                    ^
+        v                                    |
+Cloud SQL PostgreSQL (Drizzle ORM)    (same Firebase project as
+                                        apps/customer and apps/admin)
+```
+
+**Full setup, environment variables, local development, EAS build/credentials, and
+troubleshooting (including the splash-screen and dev-build-failure fixes from the 2026-08-13 audit
+above) are documented in [apps/mobile/README.md](apps/mobile/README.md) — this section is a short
+pointer for people working from the repo root.**
+
+Quick start:
+
+```bash
+npm install                              # from the repo root — installs all workspaces incl. apps/mobile
+cp apps/mobile/.env.example apps/mobile/.env   # fill in the same Firebase project as apps/customer
+npm run dev:backend                      # backend must be running for the app to load any data
+cd apps/mobile && npx expo start         # then press 'a' for Android, or scan the QR code with Expo Go*
+```
+
+\* Expo Go only works for the parts of the app that use no custom native modules. This project
+currently has none beyond what Expo Go itself bundles (Google Sign-In and `react-native-maps` do
+need a real dev/preview build, not Expo Go, to test on-device — see the mobile README's "Running
+locally" section).
+
+Building an installable APK (no Android emulator required — this produces a real `.apk` you sideload
+onto a physical device):
+
+```bash
+cd apps/mobile
+npx eas build --platform android --profile preview       # installable APK for manual testing
+npx eas build --platform android --profile development   # dev-client APK (connects to `expo start`)
+```
+
+Both require an Expo account logged into `eas-cli` (`npx eas login`) with access to this project's
+EAS project (`@tumelobokote/storedash-mobile`, ID `ba9584a0-168f-4c5d-a3cf-c7031addcb96` — the one
+in `apps/mobile/app.config.ts`, **not** any config found outside `apps/mobile`). See the mobile
+README for the full explanation of why an earlier development build was failing and exactly what
+manual steps (if any) remain on your end.
