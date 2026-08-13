@@ -22,6 +22,21 @@ plain TypeScript types.
 - **Currency/units**: South African Rand (ZAR, formatted `R 1,234.56`) and South African address
   conventions (province, postal code) throughout — see §24.
 
+## Admin login: missing post-sign-in redirect — 2026-08-13
+
+Full reference: §28. Summary: an approved store_admin/super_admin whose credentials were entirely
+correct still appeared unable to "sign in" on the production admin site — `LoginPage.tsx` had no
+redirect for the successful-*and*-authorized case, only for the successful-but-*unauthorized* one
+(`NoAccessCard`). A fully successful sign-in — email+password **or** Google — just re-rendered the
+same login form forever, with no error and no indication anything had happened. This one bug fully
+explained both symptoms reported (email/password "not working" and Google "not working"); the
+Cross-Origin-Opener-Policy console warning during Google sign-in is unrelated and harmless (§28 has
+the full trace). Fixed with a single `<Navigate to="/" replace />` added to `LoginPage.tsx`,
+verified against a real form submission (not just direct API calls) both locally and by tracing the
+identical code path deployed to production. No CORS, Firebase Authorized Domains, environment
+variable, or Vercel configuration change was needed — all of those were checked against the live
+deployment and were already correct.
+
 ## Theme system and Settings pages — 2026-08-13
 
 Full reference: §27. Summary: both apps now have a real light/dark theme toggle (previously the
@@ -1679,3 +1694,114 @@ the CSS:
 
 All screenshots and the Playwright driver script were temporary (scratchpad directory) and are not
 part of the repo.
+
+## 28. Admin login investigation: root cause and production configuration checklist
+
+A report came in that approved store admins couldn't sign into the production admin site
+(`https://storedash-store-locator-admin-admin.vercel.app/login`) with email+password, and that
+Google sign-in logged a `Cross-Origin-Opener-Policy policy would block the window.close call.`
+console warning. This section is the full trace of what was actually checked against the live
+deployment, what the real root cause was, and what — despite the long list of suspects in the
+original report — turned out **not** to be the problem.
+
+### The actual bug: `LoginPage.tsx` never redirected on success
+
+`apps/admin/src/pages/LoginPage.tsx` had exactly one post-auth conditional:
+
+```tsx
+if (!loading && firebaseUser && profile && !isAuthorized) {
+  return <NoAccessCard />;
+}
+```
+
+— handling "signed in but not authorized." There was **no corresponding case for "signed in and
+authorized"** — no `<Navigate>`, no `useNavigate()` call, nothing. `RequireAuth` (wrapping every
+*other* route) redirects an unauthenticated user to `/login`, but nothing did the reverse: send an
+authenticated, authorized user from `/login` to `/`. The practical effect: `signInWithEmail` or
+`signInWithGoogle` would resolve successfully, Firebase's `onAuthStateChanged` would fire, `profile`
+and `isAuthorized` would become correct — and the login form would just sit there, `submitting`
+reset to `false`, no error shown, doing nothing. A user watching this has no way to tell "it
+silently succeeded and nothing happened next" apart from "it's broken" — which is exactly how this
+was reported, for **both** sign-in methods, since both funnel through the same `firebaseUser`/
+`profile`/`isAuthorized` state with no method-specific redirect either.
+
+**Fix** (`apps/admin/src/pages/LoginPage.tsx`):
+
+```tsx
+if (!loading && firebaseUser && profile && isAuthorized) {
+  return <Navigate to="/" replace />;
+}
+```
+
+Verified with a real form submission (Playwright filling the actual email/password inputs and
+clicking the actual submit button — not a shortcut that bypasses this code path), confirming the
+browser URL changes from `/login` to `/` and the Dashboard renders. The customer app's
+`SignInPage.tsx` already had correct `navigate('/account', { replace: true })` calls on every
+sign-in path (email, phone, Google) — this bug was specific to the admin app and this fix doesn't
+touch the customer app at all.
+
+### A separate, real data issue found along the way: some accounts have no password set
+
+While tracing this, the three non-customer accounts in the production database were checked via the
+Firebase Admin SDK (`adminAuth.getUser(uid)`). All three showed a `'password'` entry in
+`providerData` but an **empty `passwordHash`** — confirmed live by attempting
+`accounts:signInWithPassword` directly against the Identity Toolkit REST API for one of them, which
+Firebase correctly rejected with `INVALID_LOGIN_CREDENTIALS`. This is expected, correct Firebase
+behavior, not a bug: **an account that has never had a password set will reject any password
+offered to it.** If the specific account(s) you're testing with show this, the fix isn't a code
+change — it's using **Forgot password?** on the login page (already in the UI, `sendPasswordReset`)
+for that email, which works even for an account that's never had a password before (it sets one, it
+doesn't require an existing one). `ForgotPasswordPage.tsx` already documents this ("This also works
+to add a password to an account you created with Google").
+
+### The Cross-Origin-Opener-Policy warning: confirmed harmless, no change made
+
+Checked, in this order, before ruling this out:
+
+1. **Does the admin app's own Vercel deployment set a COOP header?** `curl -I` against the live
+   site returns no `Cross-Origin-Opener-Policy` header at all — confirmed by inspecting the actual
+   response headers, not assumed. `apps/admin/vercel.json` only contains the SPA rewrite rule, no
+   `headers` block. We are not setting this header, so we cannot be the one blocking anything with
+   it.
+2. **Where does it come from, then?** The warning fires from within Google's own OAuth popup /
+   Firebase's hosted `__/auth/handler` page (`shop-tracker-20d4e.firebaseapp.com`), pages this app
+   doesn't control and can't set headers for. This is a widely-documented, benign interaction
+   between Chrome's popup-COOP enforcement and Firebase's `signInWithPopup` cleanup step — Firebase
+   resolves the sign-in via a storage/postMessage event, then tries to `window.close()` the popup as
+   a courtesy; if that specific call is blocked, the popup just stays open an extra moment (or the
+   user closes it) — the credential has already been resolved by then.
+3. **Does the reported stack trace confirm auth completed first?** Yes — `resolve` appears
+   *before* `close`/`cleanUp`/`unregisterAndCleanUp` in the trace, meaning the auth promise had
+   already resolved by the time the harmless `close()` call ran into COOP.
+
+Per the task's own instruction not to change security headers unless they're actually the cause: no
+header was added or changed anywhere for this. Before this investigation, the missing-redirect bug
+(above) meant a successful Google sign-in looked identical to a failed one from the user's seat —
+that's almost certainly what made this warning look load-bearing when it wasn't.
+
+### Production configuration checklist — what was actually verified live, and what needed no change
+
+| Area | Checked how | Result |
+|---|---|---|
+| Backend reachable | `curl https://storedash-store-locator-admin.onrender.com/api/health` | OK, DB connected — **no change** |
+| CORS for the admin origin | Live `OPTIONS` preflight against `/api/auth/sync` with `Origin: https://storedash-store-locator-admin-admin.vercel.app` | `access-control-allow-origin` present and correct — **no change** |
+| Admin bundle's baked-in API URL | Fetched the deployed JS bundle, grepped for the backend hostname | Points at the correct Render URL — **no change** |
+| Admin bundle's Firebase `authDomain` | Same bundle inspection | `shop-tracker-20d4e.firebaseapp.com`, correct project — **no change** |
+| Backend role/approval authorization | Minted real Firebase ID tokens (Admin SDK custom token → `signInWithCustomToken`) for a `super_admin`, an approved `store_admin`, and a `customer`, called `/api/auth/me` and an admin-only write against **production** | Correct role/`managedStoreIds` returned in every case; `customer` correctly 403'd on an admin write — **no change** |
+| Suspension enforcement | Temporarily suspended a real test account, confirmed `requireAuth` rejects with "This account has been suspended," then restored the account | Works correctly server-side, independent of the frontend — **no change** |
+| Admin login redirect | Real Playwright form submission | **Broken — fixed, see above** |
+| Google OAuth COOP warning | Verified no COOP header on our side, traced the warning to Google/Firebase's own hosted pages, confirmed `resolve` precedes `close` in the stack | Cosmetic only, auth unaffected — **no change** |
+| Some accounts' password credential | `adminAuth.getUser()` + live `signInWithPassword` REST call | No password ever set on those specific accounts — **not a code issue; use Forgot password for that account** |
+
+If you're setting this project up fresh and want to avoid ever hitting the redirect bug's *effects*
+again (the bug itself is fixed, but the checklist below is what "sign-in genuinely isn't working"
+should still walk through, since a mis-set item here would look identical from the login screen):
+
+- Firebase Console → Authentication → Settings → Authorized domains includes both Vercel domains
+  exactly (no trailing slash, `https://` implied, just the bare host) — §10, §18.
+- Render → environment → `ALLOWED_ORIGINS` includes both Vercel origins — §5, §18.
+- Both Vercel projects' `VITE_API_URL` points at the live Render URL, and `VITE_FIREBASE_*` match
+  the same Firebase project used by the backend's `FIREBASE_PROJECT_ID` — §5, §9.
+- The account being tested actually has a password set on it (Firebase Console → Authentication →
+  Users → find the user → check whether a password provider is genuinely present, or just try
+  **Forgot password?** — it's non-destructive for an account with no password yet).

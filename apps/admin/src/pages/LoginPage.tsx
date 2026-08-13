@@ -1,6 +1,6 @@
 import { AlertCircle, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authErrorMessage } from '../lib/authErrors';
 import { env } from '../lib/env';
@@ -47,6 +47,15 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
+
+  // Signed in and authorized (approved store_admin/super_admin) — send them
+  // straight to the dashboard. Without this, a fully successful sign-in
+  // (email+password or Google) just re-renders this same form forever, since
+  // nothing else in the app navigates away from /login on its own — this is
+  // what "sign-in doesn't work" actually was for a correctly-approved admin.
+  if (!loading && firebaseUser && profile && isAuthorized) {
+    return <Navigate to="/" replace />;
+  }
 
   // Signed in, but has no store to manage, isn't a platform admin, or is suspended.
   if (!loading && firebaseUser && profile && !isAuthorized) {
