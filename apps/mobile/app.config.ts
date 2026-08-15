@@ -47,6 +47,18 @@ const config: ExpoConfig = {
   web: {
     favicon: './assets/favicon.png',
   },
+  // Required because the "preview"/"production" EAS build profiles declare a
+  // `channel` (eas.json) — EAS Update needs both of these to resolve which
+  // update channel/runtime a given build should check. We don't currently
+  // publish OTA updates, but the channel-based build profiles fail without
+  // this wired up, so it's set to the standard "appVersion" policy (an
+  // update is only offered to installs matching the exact same app version).
+  updates: {
+    url: 'https://u.expo.dev/ba9584a0-168f-4c5d-a3cf-c7031addcb96',
+  },
+  runtimeVersion: {
+    policy: 'appVersion',
+  },
   plugins: [
     'expo-router',
     'expo-status-bar',

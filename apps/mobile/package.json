@@ -2,6 +2,9 @@
   "name": "@storedash/mobile",
   "version": "1.0.0",
   "main": "expo-router/entry",
+  "engines": {
+    "node": ">=22 <25"
+  },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -20,6 +23,7 @@
     "expo-splash-screen": "~57.0.6",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.2",
+    "expo-updates": "~57.0.14",
     "firebase": "^12.17.1",
     "lucide-react-native": "^1.31.0",
     "react": "^19.2.3",
@@ -45,7 +49,9 @@
   "private": true,
   "expo": {
     "install": {
-      "exclude": ["react"]
+      "exclude": [
+        "react"
+      ]
     }
   }
 }
