@@ -1,7 +1,7 @@
 import { Component, type ReactNode } from 'react';
 import * as Updates from 'expo-updates';
 import { AlertTriangle } from 'lucide-react-native';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Button } from './Button';
 
@@ -9,36 +9,51 @@ import { Button } from './Button';
 // otherwise unmount the whole tree with nothing left on screen — a blank
 // white page and no way back, since Expo/RN's red-box diagnostics only show
 // in dev builds. Catches it and offers a way to recover in place instead.
+//
+// TEMPORARY: also surfaces the actual error message/component stack on
+// screen (not just console.error, which isn't visible on a device without a
+// debugger attached) — this is diagnostic scaffolding for tracking down the
+// Services-tab crash and should come back out once that's root-caused.
 interface Props {
   children: ReactNode;
 }
 
 interface State {
   error: Error | null;
+  componentStack: string | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null };
+  state: State = { error: null, componentStack: null };
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
     console.error('[ErrorBoundary] Unhandled render error:', error, info.componentStack);
+    this.setState({ componentStack: info.componentStack });
   }
 
-  reset = () => this.setState({ error: null });
+  reset = () => this.setState({ error: null, componentStack: null });
 
   render() {
     if (this.state.error) {
-      return <ErrorBoundaryFallback onReset={this.reset} />;
+      return <ErrorBoundaryFallback error={this.state.error} componentStack={this.state.componentStack} onReset={this.reset} />;
     }
     return this.props.children;
   }
 }
 
-function ErrorBoundaryFallback({ onReset }: { onReset: () => void }) {
+function ErrorBoundaryFallback({
+  error,
+  componentStack,
+  onReset,
+}: {
+  error: Error;
+  componentStack: string | null;
+  onReset: () => void;
+}) {
   const { colors } = useTheme();
 
   // Prefer a full JS reload (fresh navigation state, guaranteed not to
@@ -52,6 +67,12 @@ function ErrorBoundaryFallback({ onReset }: { onReset: () => void }) {
     }
   };
 
+  const details = `${error.name}: ${error.message}\n\n${error.stack ?? ''}\n\nComponent stack:${componentStack ?? ' (unavailable)'}`;
+
+  const shareDetails = () => {
+    void Share.share({ message: details });
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.gray50 }]}>
       <View style={[styles.iconWrap, { backgroundColor: 'rgba(220,38,38,0.1)' }]}>
@@ -61,8 +82,16 @@ function ErrorBoundaryFallback({ onReset }: { onReset: () => void }) {
       <Text style={[styles.message, { color: colors.gray500 }]}>
         This screen ran into a problem. You can try again — your data hasn't been lost.
       </Text>
-      <View style={{ width: 180, marginTop: 6 }}>
+
+      <ScrollView style={[styles.detailsBox, { backgroundColor: colors.gray100, borderColor: colors.gray200 }]} contentContainerStyle={{ padding: 10 }}>
+        <Text selectable style={[styles.detailsText, { color: colors.gray700 }]}>
+          {details}
+        </Text>
+      </ScrollView>
+
+      <View style={{ width: 220, marginTop: 6, gap: 8 }}>
         <Button label="Try again" onPress={recover} variant="secondary" />
+        <Button label="Share error details" onPress={shareDetails} variant="ghost" />
       </View>
     </View>
   );
@@ -93,5 +122,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 19,
     maxWidth: 280,
+  },
+  detailsBox: {
+    maxHeight: 180,
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  detailsText: {
+    fontSize: 11,
+    fontFamily: 'monospace',
   },
 });
