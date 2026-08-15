@@ -18,4 +18,11 @@ export const env = {
   // Optional, same "degrade gracefully" pattern as the customer web app's
   // VITE_ADMIN_URL — the "Admin Dashboard" link/row is hidden if this is unset.
   adminUrl: process.env.EXPO_PUBLIC_ADMIN_URL || '',
+  // Optional "latest APK" pointer for the Account screen's App Updates card
+  // (see src/config/appUpdate.ts). Left unset by default — set per EAS build
+  // profile in eas.json, or leave the static fallbacks in appUpdate.ts to
+  // edit by hand after a build. Never required, so builds never fail if unset.
+  latestApkVersion: process.env.EXPO_PUBLIC_LATEST_APK_VERSION || '',
+  latestApkUrl: process.env.EXPO_PUBLIC_LATEST_APK_URL || '',
+  latestApkNotes: process.env.EXPO_PUBLIC_LATEST_APK_NOTES || '',
 };

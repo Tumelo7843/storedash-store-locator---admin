@@ -271,7 +271,7 @@ export default function StoreDetailScreen() {
           )}
           <View style={styles.serviceMetaRow}>
             <Text style={[styles.productPrice, { color: colors.gray900 }]}>{formatZAR(s.price)}</Text>
-            {s.durationMinutes && <Text style={[styles.serviceDuration, { color: colors.gray500 }]}>{s.durationMinutes} min</Text>}
+            {Boolean(s.durationMinutes) && <Text style={[styles.serviceDuration, { color: colors.gray500 }]}>{s.durationMinutes} min</Text>}
           </View>
         </View>
         <ChevronRight size={16} color={colors.gray400} />

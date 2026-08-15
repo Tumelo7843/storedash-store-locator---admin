@@ -43,7 +43,7 @@ function StoreDetailSheet({ store, distanceKm, onClose }: { store: Store; distan
   const openNow = isStoreOpenNow(store.openingHours);
 
   return (
-    <FadeInView style={[sheetStyles.sheet, { backgroundColor: colors.surface, borderColor: colors.gray200 }]}>
+    <FadeInView key={store.id} style={[sheetStyles.sheet, { backgroundColor: colors.surface, borderColor: colors.gray200 }]}>
       <AnimatedPressable
         onPress={onClose}
         hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}

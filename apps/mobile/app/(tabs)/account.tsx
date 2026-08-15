@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import {
   Check,
+  Download,
   ExternalLink,
   FileText,
   Info,
@@ -19,9 +20,11 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { Button } from '../../src/components/Button';
 import { Screen } from '../../src/components/Screen';
 import { SettingsRow, SettingsSection } from '../../src/components/SettingsRow';
+import { APP_UPDATE } from '../../src/config/appUpdate';
 import { useAuth } from '../../src/context/AuthContext';
 import { useTheme, type ThemePreference } from '../../src/context/ThemeContext';
 import { env } from '../../src/lib/env';
+import { isNewerVersion } from '../../src/lib/version';
 
 const ROLE_LABEL: Record<string, string> = {
   store_admin: 'Store Owner',
@@ -40,6 +43,9 @@ export default function AccountScreen() {
   const router = useRouter();
 
   const isApprovedStoreAdmin = Boolean(profile && profile.role !== 'customer' && !profile.suspended);
+
+  const installedVersion = Constants.expoConfig?.version ?? '1.0.0';
+  const updateAvailable = isNewerVersion(installedVersion, APP_UPDATE.latestVersion);
 
   const confirmSignOut = () => {
     Alert.alert('Sign out?', 'You can sign back in any time.', [
@@ -128,8 +134,39 @@ export default function AccountScreen() {
           <SettingsRow icon={FileText} label="Terms of service" onPress={() => router.push('/legal/terms')} last />
         </SettingsSection>
 
-        <SettingsSection>
-          <SettingsRow label={`App version ${Constants.expoConfig?.version ?? '1.0.0'}`} last />
+        <SettingsSection title="App Updates">
+          <View style={[styles.updateCard, { borderColor: colors.gray100 }]}>
+            <View style={styles.updateRow}>
+              <Text style={[styles.updateLabel, { color: colors.gray500 }]}>Installed version</Text>
+              <Text style={[styles.updateValue, { color: colors.gray900 }]}>{installedVersion}</Text>
+            </View>
+            <View style={styles.updateRow}>
+              <Text style={[styles.updateLabel, { color: colors.gray500 }]}>Latest available</Text>
+              <Text style={[styles.updateValue, { color: colors.gray900 }]}>{APP_UPDATE.latestVersion}</Text>
+            </View>
+            <View
+              style={[
+                styles.updateBadge,
+                { backgroundColor: updateAvailable ? 'rgba(180,83,9,0.14)' : 'rgba(5,150,105,0.15)' },
+              ]}
+            >
+              <Text style={[styles.updateBadgeText, { color: updateAvailable ? colors.amber300 : colors.emerald400 }]}>
+                {updateAvailable ? 'Update available' : 'Up to date'}
+              </Text>
+            </View>
+            {APP_UPDATE.releaseNotes ? (
+              <Text style={[styles.updateNotes, { color: colors.gray600 }]}>{APP_UPDATE.releaseNotes}</Text>
+            ) : null}
+            <Button
+              label={APP_UPDATE.apkUrl ? 'Download latest APK' : 'No update link configured yet'}
+              onPress={() => {
+                if (APP_UPDATE.apkUrl) void Linking.openURL(APP_UPDATE.apkUrl);
+              }}
+              disabled={!APP_UPDATE.apkUrl}
+              variant="secondary"
+              icon={<Download size={16} color={colors.gray900} />}
+            />
+          </View>
         </SettingsSection>
 
         {profile && (
@@ -233,5 +270,38 @@ const styles = StyleSheet.create({
   themeLabel: {
     fontSize: 12,
     fontWeight: '700',
+  },
+  updateCard: {
+    padding: 14,
+    gap: 10,
+  },
+  updateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  updateLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  updateValue: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  updateBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  updateBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  updateNotes: {
+    fontSize: 12,
+    lineHeight: 18,
   },
 });

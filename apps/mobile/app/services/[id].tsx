@@ -71,7 +71,7 @@ export default function ServiceDetailScreen() {
           <Text style={[styles.name, { color: colors.gray900 }]}>{service.name}</Text>
           <View style={styles.metaRow}>
             <Text style={[styles.price, { color: colors.primary }]}>{formatZAR(service.price)}</Text>
-            {service.durationMinutes && (
+            {Boolean(service.durationMinutes) && (
               <View style={styles.durationRow}>
                 <Clock size={13} color={colors.gray500} />
                 <Text style={[styles.duration, { color: colors.gray500 }]}>{service.durationMinutes} min</Text>
