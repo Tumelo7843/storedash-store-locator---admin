@@ -1,13 +1,31 @@
 import { StatusBar } from 'expo-status-bar';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useRef, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AnimatedSplash } from '../src/components/AnimatedSplash';
 import { AuthProvider } from '../src/context/AuthContext';
 import { CartProvider } from '../src/context/CartContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
 function RootNavigator() {
   const { resolvedTheme, colors } = useTheme();
+  const [splashVisible, setSplashVisible] = useState(true);
+  const nativeSplashHidden = useRef(false);
+
+  useEffect(() => {
+    // Fires once, as soon as this (already-mounted, already-themed) tree is
+    // ready to paint — swaps the static native splash for the animated one
+    // below. Not gated on auth/network in any way.
+    if (!nativeSplashHidden.current) {
+      nativeSplashHidden.current = true;
+      void SplashScreen.hideAsync();
+    }
+  }, []);
+
   return (
     <>
       <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
@@ -32,6 +50,7 @@ function RootNavigator() {
         <Stack.Screen name="legal/terms" />
         <Stack.Screen name="legal/about" />
       </Stack>
+      {splashVisible && <AnimatedSplash onFinish={() => setSplashVisible(false)} />}
     </>
   );
 }

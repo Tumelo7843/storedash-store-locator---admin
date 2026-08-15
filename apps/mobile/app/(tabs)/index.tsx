@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Linking, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, StyleSheet, Text, TextInput, View } from 'react-native';
 import { fetchStores } from '../../src/api/stores';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { OpenClosedBadge } from '../../src/components/Badge';
@@ -27,10 +27,11 @@ import { StoreCardSkeleton } from '../../src/components/Skeleton';
 import { directionsUrl, StoreCard } from '../../src/components/StoreCard';
 import { StoreMapView } from '../../src/components/StoreMapView';
 import { useTheme } from '../../src/context/ThemeContext';
+import { useDebouncedValue } from '../../src/lib/useDebouncedValue';
 import { haversineDistanceKm, useGeolocation } from '../../src/lib/geo';
 import { isStoreOpenNow } from '../../src/lib/hours';
+import { PAGE_SIZE, usePaginatedList } from '../../src/lib/usePaginatedList';
 import { readJSON, writeJSON } from '../../src/lib/storage';
-import { useAsync } from '../../src/lib/useAsync';
 
 const CATEGORIES = ['All', 'Grocery', 'Bookstore', 'Electronics', 'Cafe', 'Bakery', 'Apparel', 'General'];
 const DISPLAY_MODE_KEY = 'storedash_mobile_store_display_mode';
@@ -117,13 +118,15 @@ export default function DiscoverScreen() {
     void writeJSON(DISPLAY_MODE_KEY, mode);
   };
 
-  const { data, loading, error, reload } = useAsync(
-    () => fetchStores({ search: search || undefined, category: category === 'All' ? undefined : category, limit: 100 }),
-    [search, category],
+  const debouncedSearch = useDebouncedValue(search, 300);
+
+  const { items, loading, loadingMore, error, loadMore, reload } = usePaginatedList(
+    (page) => fetchStores({ search: debouncedSearch || undefined, category: category === 'All' ? undefined : category, page, limit: PAGE_SIZE }),
+    [debouncedSearch, category],
   );
 
   const stores = useMemo(() => {
-    const list = data?.items ?? [];
+    const list = items;
     if (!geo.coords) return list;
     return [...list].sort((a, b) => {
       if (a.lat === null || a.lng === null) return 1;
@@ -132,7 +135,7 @@ export default function DiscoverScreen() {
       const db = haversineDistanceKm(geo.coords!.lat, geo.coords!.lng, b.lat, b.lng);
       return da - db;
     });
-  }, [data, geo.coords]);
+  }, [items, geo.coords]);
 
   const distanceFor = (store: Store) =>
     geo.coords && store.lat !== null && store.lng !== null ? haversineDistanceKm(geo.coords.lat, geo.coords.lng, store.lat, store.lng) : null;
@@ -252,6 +255,9 @@ export default function DiscoverScreen() {
               contentContainerStyle={styles.listContent}
               columnWrapperStyle={displayMode === 'grid' ? styles.gridRow : undefined}
               ItemSeparatorComponent={displayMode === 'list' ? () => <View style={{ height: 10 }} /> : undefined}
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.4}
+              ListFooterComponent={loadingMore ? <ActivityIndicator style={{ marginVertical: 16 }} color={colors.primary} /> : null}
               renderItem={({ item, index }) => (
                 <FadeInView index={index} style={displayMode === 'grid' ? styles.gridItem : undefined}>
                   <StoreCard

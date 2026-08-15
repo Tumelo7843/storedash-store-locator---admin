@@ -18,6 +18,12 @@ async function authHeaders(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${token}` };
 }
 
+// No request here should be able to hang forever — a slow/unreachable API
+// must not leave callers (most importantly AuthContext.loading, which gates
+// what the user sees on launch) stuck indefinitely. 15s is generous for a
+// normal request but bounded.
+const REQUEST_TIMEOUT_MS = 15000;
+
 export async function request<T>(path: string, options: RequestInit = {}, withAuth = false): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -25,7 +31,20 @@ export async function request<T>(path: string, options: RequestInit = {}, withAu
     ...(withAuth ? await authHeaders() : {}),
   };
 
-  const res = await fetch(`${env.apiUrl}${path}`, { ...options, headers });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${env.apiUrl}${path}`, { ...options, headers, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new ApiError(0, 'TIMEOUT', 'The request took too long. Please check your connection and try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     let body: any = {};
