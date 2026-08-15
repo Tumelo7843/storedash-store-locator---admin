@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import {
   AlertCircle,
+  LayoutGrid,
   List as ListIcon,
   Map as MapIcon,
   MapPin,
@@ -13,7 +14,7 @@ import {
   Store as StoreIcon,
   X,
 } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Linking, StyleSheet, Text, TextInput, View } from 'react-native';
 import { fetchStores } from '../../src/api/stores';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
@@ -28,9 +29,12 @@ import { StoreMapView } from '../../src/components/StoreMapView';
 import { useTheme } from '../../src/context/ThemeContext';
 import { haversineDistanceKm, useGeolocation } from '../../src/lib/geo';
 import { isStoreOpenNow } from '../../src/lib/hours';
+import { readJSON, writeJSON } from '../../src/lib/storage';
 import { useAsync } from '../../src/lib/useAsync';
 
 const CATEGORIES = ['All', 'Grocery', 'Bookstore', 'Electronics', 'Cafe', 'Bakery', 'Apparel', 'General'];
+const DISPLAY_MODE_KEY = 'storedash_mobile_store_display_mode';
+type DisplayMode = 'list' | 'grid';
 
 function StoreDetailSheet({ store, distanceKm, onClose }: { store: Store; distanceKm: number | null; onClose: () => void }) {
   const { colors } = useTheme();
@@ -39,7 +43,11 @@ function StoreDetailSheet({ store, distanceKm, onClose }: { store: Store; distan
 
   return (
     <FadeInView style={[sheetStyles.sheet, { backgroundColor: colors.surface, borderColor: colors.gray200 }]}>
-      <AnimatedPressable onPress={onClose} style={[sheetStyles.closeBtn, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+      <AnimatedPressable
+        onPress={onClose}
+        hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+        style={[sheetStyles.closeBtn, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
+      >
         <X size={15} color="#fff" />
       </AnimatedPressable>
       <View style={sheetStyles.row}>
@@ -94,8 +102,20 @@ export default function DiscoverScreen() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [view, setView] = useState<'list' | 'map'>('list');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('list');
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
   const geo = useGeolocation();
+
+  useEffect(() => {
+    readJSON<DisplayMode>(DISPLAY_MODE_KEY).then((stored) => {
+      if (stored === 'list' || stored === 'grid') setDisplayMode(stored);
+    });
+  }, []);
+
+  const changeDisplayMode = (mode: DisplayMode) => {
+    setDisplayMode(mode);
+    void writeJSON(DISPLAY_MODE_KEY, mode);
+  };
 
   const { data, loading, error, reload } = useAsync(
     () => fetchStores({ search: search || undefined, category: category === 'All' ? undefined : category, limit: 100 }),
@@ -134,7 +154,7 @@ export default function DiscoverScreen() {
               style={[styles.searchInput, { color: colors.gray900 }]}
             />
             {search.length > 0 && (
-              <AnimatedPressable onPress={() => setSearch('')}>
+              <AnimatedPressable onPress={() => setSearch('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <X size={16} color={colors.gray500} />
               </AnimatedPressable>
             )}
@@ -172,16 +192,41 @@ export default function DiscoverScreen() {
             <Text style={[styles.geoErrorText, { color: colors.amber400 }]}>{geo.errorMessage}</Text>
           </View>
         )}
+      </View>
 
-        <View style={[styles.segment, { backgroundColor: colors.gray100 }]}>
-          <AnimatedPressable onPress={() => setView('list')} style={[styles.segmentBtn, view === 'list' && { backgroundColor: colors.surface }]}>
-            <ListIcon size={14} color={view === 'list' ? colors.gray900 : colors.gray500} />
-            <Text style={[styles.segmentText, { color: view === 'list' ? colors.gray900 : colors.gray500 }]}>List</Text>
-          </AnimatedPressable>
-          <AnimatedPressable onPress={() => setView('map')} style={[styles.segmentBtn, view === 'map' && { backgroundColor: colors.surface }]}>
-            <MapIcon size={14} color={view === 'map' ? colors.gray900 : colors.gray500} />
-            <Text style={[styles.segmentText, { color: view === 'map' ? colors.gray900 : colors.gray500 }]}>Map</Text>
-          </AnimatedPressable>
+      <View style={styles.resultsBar}>
+        <Text style={[styles.resultsCount, { color: colors.gray500 }]}>
+          {loading ? 'Searching…' : `${stores.length} store${stores.length === 1 ? '' : 's'}`}
+        </Text>
+        <View style={styles.resultsControls}>
+          {view === 'list' && (
+            <View style={[styles.segment, { backgroundColor: colors.gray100 }]}>
+              <AnimatedPressable
+                onPress={() => changeDisplayMode('list')}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                style={[styles.segmentIconBtn, displayMode === 'list' && { backgroundColor: colors.surface }]}
+              >
+                <ListIcon size={14} color={displayMode === 'list' ? colors.gray900 : colors.gray500} />
+              </AnimatedPressable>
+              <AnimatedPressable
+                onPress={() => changeDisplayMode('grid')}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                style={[styles.segmentIconBtn, displayMode === 'grid' && { backgroundColor: colors.surface }]}
+              >
+                <LayoutGrid size={14} color={displayMode === 'grid' ? colors.gray900 : colors.gray500} />
+              </AnimatedPressable>
+            </View>
+          )}
+          <View style={[styles.segment, { backgroundColor: colors.gray100 }]}>
+            <AnimatedPressable onPress={() => setView('list')} style={[styles.segmentBtn, view === 'list' && { backgroundColor: colors.surface }]}>
+              <ListIcon size={14} color={view === 'list' ? colors.gray900 : colors.gray500} />
+              <Text style={[styles.segmentText, { color: view === 'list' ? colors.gray900 : colors.gray500 }]}>List</Text>
+            </AnimatedPressable>
+            <AnimatedPressable onPress={() => setView('map')} style={[styles.segmentBtn, view === 'map' && { backgroundColor: colors.surface }]}>
+              <MapIcon size={14} color={view === 'map' ? colors.gray900 : colors.gray500} />
+              <Text style={[styles.segmentText, { color: view === 'map' ? colors.gray900 : colors.gray500 }]}>Map</Text>
+            </AnimatedPressable>
+          </View>
         </View>
       </View>
 
@@ -200,13 +245,21 @@ export default function DiscoverScreen() {
           )}
           {!loading && !error && stores.length > 0 && (
             <FlatList
+              key={displayMode}
               data={stores}
+              numColumns={displayMode === 'grid' ? 2 : 1}
               keyExtractor={(s) => String(s.id)}
               contentContainerStyle={styles.listContent}
-              ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+              columnWrapperStyle={displayMode === 'grid' ? styles.gridRow : undefined}
+              ItemSeparatorComponent={displayMode === 'list' ? () => <View style={{ height: 10 }} /> : undefined}
               renderItem={({ item, index }) => (
-                <FadeInView index={index}>
-                  <StoreCard store={item} distanceKm={distanceFor(item)} onPress={() => router.push(`/stores/${item.id}`)} />
+                <FadeInView index={index} style={displayMode === 'grid' ? styles.gridItem : undefined}>
+                  <StoreCard
+                    store={item}
+                    distanceKm={distanceFor(item)}
+                    onPress={() => router.push(`/stores/${item.id}`)}
+                    layout={displayMode}
+                  />
                 </FadeInView>
               )}
             />
@@ -290,6 +343,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     flex: 1,
   },
+  resultsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    gap: 10,
+  },
+  resultsCount: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  resultsControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   segment: {
     flexDirection: 'row',
     borderRadius: 12,
@@ -303,6 +373,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 9,
+  },
+  segmentIconBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 30,
+    height: 28,
     borderRadius: 9,
   },
   segmentText: {
@@ -313,12 +391,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 24,
   },
+  gridRow: {
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  gridItem: {
+    width: '48%',
+    marginBottom: 10,
+  },
   sheetWrap: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
     padding: 12,
+    zIndex: 10,
+    elevation: 10,
   },
 });
 

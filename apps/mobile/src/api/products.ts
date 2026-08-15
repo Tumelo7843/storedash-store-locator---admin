@@ -13,3 +13,8 @@ export async function fetchProducts(params: ProductListParams = {}): Promise<Pag
   const { data, pagination } = await request<{ data: Product[]; pagination: ApiPagination }>(`/api/products${toQuery(params)}`);
   return { items: data, ...pagination };
 }
+
+export async function fetchProduct(id: number): Promise<Product> {
+  const { data } = await request<{ data: Product }>(`/api/products/${id}`);
+  return data;
+}

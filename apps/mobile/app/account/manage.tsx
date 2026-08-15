@@ -60,7 +60,7 @@ function ReauthGate({ onVerified }: { onVerified: () => void }) {
   }
 
   if (provider === 'phone') {
-    return <Text style={[styles.helperText, { color: '#b45309' }]}>For your security, please sign out and sign back in with your phone number, then return here to continue.</Text>;
+    return <Text style={[styles.helperText, { color: colors.amber400 }]}>For your security, please sign out and sign back in with your phone number, then return here to continue.</Text>;
   }
 
   return (
@@ -132,7 +132,7 @@ function EmailVerificationBanner() {
 
   return (
     <View style={[styles.verifyBanner, { backgroundColor: 'rgba(180,83,9,0.08)', borderColor: 'rgba(180,83,9,0.2)' }]}>
-      <Mail size={16} color="#b45309" />
+      <Mail size={16} color={colors.amber400} />
       <View style={{ flex: 1, gap: 4 }}>
         <Text style={[styles.cardTitle, { color: colors.gray900 }]}>Verify your email</Text>
         <Text style={[styles.helperText, { color: colors.gray500 }]}>
@@ -141,7 +141,7 @@ function EmailVerificationBanner() {
         {error && <Text style={{ fontSize: 11, color: colors.rose400 }}>{error}</Text>}
         {!sent && (
           <AnimatedPressable onPress={handleResend} disabled={sending}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: '#b45309' }}>{sending ? 'Sending…' : 'Resend verification email'}</Text>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.amber400 }}>{sending ? 'Sending…' : 'Resend verification email'}</Text>
           </AnimatedPressable>
         )}
       </View>

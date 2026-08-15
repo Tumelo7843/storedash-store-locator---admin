@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
+  ChevronRight,
   Clock,
   Mail,
   MapPin,
@@ -198,13 +199,16 @@ export default function StoreDetailScreen() {
                     const inCart = lines.find((l) => l.product.id === p.id)?.quantity ?? 0;
                     return (
                       <FadeInView key={p.id} index={i} style={{ width: '48%' }}>
-                        <View style={[styles.productCard, { backgroundColor: colors.surface, borderColor: colors.gray100 }]}>
+                        <AnimatedPressable
+                          onPress={() => router.push(`/products/${p.id}`)}
+                          style={[styles.productCard, { backgroundColor: colors.surface, borderColor: colors.gray100 }]}
+                        >
                           <View style={[styles.productImageWrap, { backgroundColor: colors.gray100 }]}>
                             {p.imageUrl && <Image source={{ uri: p.imageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />}
                             <View
                               style={[
                                 styles.stockPill,
-                                { backgroundColor: isOut ? '#dc2626' : p.availability === 'low_stock' ? '#f59e0b' : '#059669' },
+                                { backgroundColor: isOut ? colors.rose400 : p.availability === 'low_stock' ? colors.amber400 : colors.emerald400 },
                               ]}
                             >
                               <Text style={styles.stockPillText}>{isOut ? 'Out of stock' : p.availability === 'low_stock' ? 'Low stock' : 'In stock'}</Text>
@@ -228,7 +232,7 @@ export default function StoreDetailScreen() {
                               </AnimatedPressable>
                             </View>
                           </View>
-                        </View>
+                        </AnimatedPressable>
                       </FadeInView>
                     );
                   })}
@@ -248,7 +252,10 @@ export default function StoreDetailScreen() {
                 !servicesQuery.error &&
                 servicesQuery.data?.items.map((s, i) => (
                   <FadeInView key={s.id} index={i}>
-                    <View style={[styles.serviceCard, { backgroundColor: colors.surface, borderColor: colors.gray100 }]}>
+                    <AnimatedPressable
+                      onPress={() => router.push(`/services/${s.id}`)}
+                      style={[styles.serviceCard, { backgroundColor: colors.surface, borderColor: colors.gray100 }]}
+                    >
                       <View style={[styles.serviceImageWrap, { backgroundColor: colors.gray100 }]}>
                         {s.imageUrl ? <Image source={{ uri: s.imageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <StoreIcon size={20} color={colors.gray400} />}
                       </View>
@@ -265,7 +272,8 @@ export default function StoreDetailScreen() {
                           {s.durationMinutes && <Text style={[styles.serviceDuration, { color: colors.gray500 }]}>{s.durationMinutes} min</Text>}
                         </View>
                       </View>
-                    </View>
+                      <ChevronRight size={16} color={colors.gray400} />
+                    </AnimatedPressable>
                   </FadeInView>
                 ))}
             </>

@@ -17,7 +17,8 @@
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "shop-tracker-20d4e",
         "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "shop-tracker-20d4e.firebasestorage.app",
         "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "351008472233",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:351008472233:web:3df75eee45db646c4bfdb8"
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:351008472233:web:3df75eee45db646c4bfdb8",
+        "EXPO_PUBLIC_ADMIN_URL": "https://storedash-store-locator-admin-admin.vercel.app/login"
       }
     },
     "preview": {
@@ -33,7 +34,8 @@
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "shop-tracker-20d4e",
         "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "shop-tracker-20d4e.firebasestorage.app",
         "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "351008472233",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:351008472233:web:3df75eee45db646c4bfdb8"
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:351008472233:web:3df75eee45db646c4bfdb8",
+        "EXPO_PUBLIC_ADMIN_URL": "https://storedash-store-locator-admin-admin.vercel.app/login"
       }
     },
     "production": {
@@ -49,7 +51,8 @@
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "shop-tracker-20d4e",
         "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "shop-tracker-20d4e.firebasestorage.app",
         "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "351008472233",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:351008472233:web:3df75eee45db646c4bfdb8"
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:351008472233:web:3df75eee45db646c4bfdb8",
+        "EXPO_PUBLIC_ADMIN_URL": "https://storedash-store-locator-admin-admin.vercel.app/login"
       }
     }
   },

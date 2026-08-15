@@ -20,6 +20,8 @@ function RootNavigator() {
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="stores/[id]" />
+        <Stack.Screen name="products/[id]" />
+        <Stack.Screen name="services/[id]" />
         <Stack.Screen name="orders/[id]" />
         <Stack.Screen name="sign-in" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="sign-up" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />

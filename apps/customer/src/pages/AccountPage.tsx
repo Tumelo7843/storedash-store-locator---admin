@@ -72,6 +72,9 @@ export function AccountPage() {
           <Store className="size-4" /> Become a store owner
         </Link>
       ) : (
+        // Suspended store admins/super admins aren't shown a working-looking link — the
+        // admin app independently re-verifies role/suspension server-side regardless.
+        !profile.suspended &&
         env.adminUrl && (
           <a
             href={env.adminUrl}

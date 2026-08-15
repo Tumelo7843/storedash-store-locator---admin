@@ -13,7 +13,9 @@ export const env = {
     messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
     appId: required('EXPO_PUBLIC_FIREBASE_APP_ID', process.env.EXPO_PUBLIC_FIREBASE_APP_ID),
   },
-  // Optional: Google sign-in is disabled (button hidden) if this is unset,
-  // same "degrade gracefully" pattern as the web app's VITE_ADMIN_URL.
+  // Optional: Google sign-in is disabled (button hidden) if this is unset.
   googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
+  // Optional, same "degrade gracefully" pattern as the customer web app's
+  // VITE_ADMIN_URL — the "Admin Dashboard" link/row is hidden if this is unset.
+  adminUrl: process.env.EXPO_PUBLIC_ADMIN_URL || '',
 };

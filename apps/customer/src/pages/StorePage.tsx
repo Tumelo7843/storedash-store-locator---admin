@@ -1,7 +1,7 @@
 import { formatZAR } from '@storedash/shared';
-import { Clock, Globe, MapPin, Navigation, Package, Phone, Plus, Search, Sparkles } from 'lucide-react';
+import { ChevronRight, Clock, Globe, MapPin, Navigation, Package, Phone, Plus, Search, Sparkles } from 'lucide-react';
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States';
 import { useCart } from '../context/CartContext';
 import { fetchProducts, fetchServices, fetchStore } from '../lib/api';
@@ -13,6 +13,7 @@ type Tab = 'products' | 'services';
 export function StorePage() {
   const { id } = useParams<{ id: string }>();
   const storeId = Number(id);
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('products');
   const [search, setSearch] = useState('');
   const { addItem, lines } = useCart();
@@ -151,7 +152,11 @@ export function StorePage() {
                   const isOut = p.availability === 'out_of_stock';
                   const inCart = lines.find((l) => l.product.id === p.id)?.quantity ?? 0;
                   return (
-                    <div key={p.id} className="bg-surface border border-gray-200 rounded-2xl overflow-hidden flex flex-col">
+                    <div
+                      key={p.id}
+                      onClick={() => navigate(`/products/${p.id}`)}
+                      className="bg-surface border border-gray-200 rounded-2xl overflow-hidden flex flex-col cursor-pointer hover:border-accent/40 transition-colors"
+                    >
                       <div className="relative aspect-4/3 bg-gray-100">
                         {p.imageUrl && <img src={p.imageUrl} alt={p.name} className="size-full object-cover" loading="lazy" />}
                         <span
@@ -174,7 +179,10 @@ export function StorePage() {
                             {p.unit && <span className="text-[10px] text-gray-400 font-normal"> /{p.unit}</span>}
                           </span>
                           <button
-                            onClick={() => addItem(p)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addItem(p);
+                            }}
                             disabled={isOut}
                             className={`p-2 rounded-xl flex items-center gap-1 text-xs font-bold ${
                               isOut ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary/90 text-white'
@@ -198,7 +206,11 @@ export function StorePage() {
             servicesQuery.data?.items.length ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {servicesQuery.data.items.map((s) => (
-                  <div key={s.id} className="bg-surface border border-gray-200 rounded-2xl p-4 flex gap-4">
+                  <div
+                    key={s.id}
+                    onClick={() => navigate(`/services/${s.id}`)}
+                    className="bg-surface border border-gray-200 rounded-2xl p-4 flex gap-4 items-center cursor-pointer hover:border-accent/40 transition-colors"
+                  >
                     {s.imageUrl && <img src={s.imageUrl} alt={s.name} className="size-16 rounded-xl object-cover bg-gray-100 shrink-0" />}
                     <div className="flex-1">
                       <span className="text-[10px] font-bold text-gray-400 uppercase">{s.category}</span>
@@ -209,6 +221,7 @@ export function StorePage() {
                         {s.durationMinutes && <span className="text-xs text-gray-400">{s.durationMinutes} min</span>}
                       </div>
                     </div>
+                    <ChevronRight className="size-4 text-gray-400 shrink-0" />
                   </div>
                 ))}
               </div>

@@ -13,9 +13,55 @@ export function directionsUrl(store: Store): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
 }
 
-export function StoreCard({ store, distanceKm, onPress, selected }: { store: Store; distanceKm: number | null; onPress: () => void; selected?: boolean }) {
+interface StoreCardProps {
+  store: Store;
+  distanceKm: number | null;
+  onPress: () => void;
+  selected?: boolean;
+  /** 'list' (default): full-width row with Call/Directions actions. 'grid': compact vertical card for a 2-column grid. */
+  layout?: 'list' | 'grid';
+}
+
+export function StoreCard({ store, distanceKm, onPress, selected, layout = 'list' }: StoreCardProps) {
   const { colors } = useTheme();
   const openNow = isStoreOpenNow(store.openingHours);
+
+  if (layout === 'grid') {
+    return (
+      <AnimatedPressable
+        onPress={onPress}
+        style={[
+          styles.gridCard,
+          {
+            backgroundColor: selected ? `${colors.primary}14` : colors.surface,
+            borderColor: selected ? colors.primary : colors.gray100,
+          },
+        ]}
+      >
+        <View style={[styles.gridImageWrap, { backgroundColor: colors.gray100 }]}>
+          {store.imageUrl ? (
+            <Image source={{ uri: store.imageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+          ) : (
+            <StoreIcon size={26} color={colors.gray400} />
+          )}
+          <View style={styles.gridBadge}>
+            <OpenClosedBadge open={openNow} />
+          </View>
+        </View>
+        <View style={styles.gridBody}>
+          <Text numberOfLines={1} style={[styles.name, { color: colors.gray900 }]}>
+            {store.name}
+          </Text>
+          <Text numberOfLines={1} style={[styles.meta, { color: colors.gray500 }]}>
+            {store.category}
+          </Text>
+          <Text numberOfLines={1} style={[styles.address, { color: colors.gray500 }]}>
+            {distanceKm !== null ? formatDistance(distanceKm) + ' away' : store.lat === null ? 'Location not available' : store.city}
+          </Text>
+        </View>
+      </AnimatedPressable>
+    );
+  }
 
   return (
     <AnimatedPressable
@@ -139,5 +185,24 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  gridCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  gridImageWrap: {
+    aspectRatio: 4 / 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+  },
+  gridBody: {
+    padding: 10,
+    gap: 2,
   },
 });

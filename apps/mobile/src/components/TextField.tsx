@@ -22,7 +22,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             styles.input,
             {
               backgroundColor: colors.gray100,
-              borderColor: error ? '#dc2626' : colors.gray200,
+              borderColor: error ? colors.rose400 : colors.gray200,
               color: colors.gray900,
             },
             rightElement ? { paddingRight: 44 } : null,
@@ -32,7 +32,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
         />
         {rightElement && <View style={styles.rightElement}>{rightElement}</View>}
       </View>
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && <Text style={[styles.error, { color: colors.rose400 }]}>{error}</Text>}
     </View>
   );
 });
@@ -60,6 +60,5 @@ const styles = StyleSheet.create({
   error: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#dc2626',
   },
 });

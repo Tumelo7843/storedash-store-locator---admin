@@ -1,6 +1,8 @@
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import {
+  Check,
+  ExternalLink,
   FileText,
   Info,
   LogIn,
@@ -12,13 +14,14 @@ import {
   Sun,
   UserCog,
 } from 'lucide-react-native';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { Button } from '../../src/components/Button';
 import { Screen } from '../../src/components/Screen';
 import { SettingsRow, SettingsSection } from '../../src/components/SettingsRow';
 import { useAuth } from '../../src/context/AuthContext';
 import { useTheme, type ThemePreference } from '../../src/context/ThemeContext';
+import { env } from '../../src/lib/env';
 
 const ROLE_LABEL: Record<string, string> = {
   store_admin: 'Store Owner',
@@ -35,6 +38,8 @@ export default function AccountScreen() {
   const { colors, preference, setPreference } = useTheme();
   const { profile, signOut } = useAuth();
   const router = useRouter();
+
+  const isApprovedStoreAdmin = Boolean(profile && profile.role !== 'customer' && !profile.suspended);
 
   const confirmSignOut = () => {
     Alert.alert('Sign out?', 'You can sign back in any time.', [
@@ -76,7 +81,16 @@ export default function AccountScreen() {
         {profile && (
           <SettingsSection title="Account">
             <SettingsRow icon={UserCog} label="Manage profile" onPress={() => router.push('/account/manage')} />
-            <SettingsRow icon={Store} label="Become a store owner" onPress={() => router.push('/become-store-owner')} last />
+            {isApprovedStoreAdmin ? (
+              <SettingsRow
+                icon={ExternalLink}
+                label="Admin Dashboard"
+                onPress={env.adminUrl ? () => Linking.openURL(env.adminUrl) : undefined}
+                last
+              />
+            ) : (
+              <SettingsRow icon={Store} label="Become a store owner" onPress={() => router.push('/become-store-owner')} last />
+            )}
           </SettingsSection>
         )}
 
@@ -92,10 +106,15 @@ export default function AccountScreen() {
                   onPress={() => setPreference(opt.key)}
                   style={[
                     styles.themeOption,
-                    { borderColor: active ? colors.primary : colors.gray200, backgroundColor: active ? `${colors.primary}10` : 'transparent' },
+                    { borderColor: active ? colors.primary : colors.gray200, backgroundColor: active ? `${colors.primary}10` : colors.surface },
                   ]}
                 >
-                  <Icon size={18} color={active ? colors.primary : colors.gray600} />
+                  {active && (
+                    <View style={[styles.themeCheck, { backgroundColor: colors.primary }]}>
+                      <Check size={10} color="#fff" strokeWidth={3} />
+                    </View>
+                  )}
+                  <Icon size={20} color={active ? colors.primary : colors.gray600} />
                   <Text style={[styles.themeLabel, { color: active ? colors.primary : colors.gray700 }]}>{opt.label}</Text>
                 </AnimatedPressable>
               );
@@ -200,6 +219,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1.5,
+  },
+  themeCheck: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   themeLabel: {
     fontSize: 12,

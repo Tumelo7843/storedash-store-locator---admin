@@ -55,15 +55,20 @@ theme preference only, both purely local/device state that was never meant to sy
 app/
   _layout.tsx              Root layout — providers (Theme, Auth, Cart), root Stack navigator
   (tabs)/_layout.tsx        Bottom tab bar: Discover, Orders, Cart, Account
-  (tabs)/index.tsx          Discover — store list/map, search, category filter, geolocation sort
+  (tabs)/index.tsx          Discover — store list/map toggle, Grid/List store display, search,
+                            category filter, geolocation sort
   (tabs)/orders.tsx          Order history (requires sign-in; shows a sign-in prompt otherwise)
   (tabs)/cart.tsx            Cart + checkout (requires sign-in to place the order, not to browse)
-  (tabs)/account.tsx         Profile summary, theme picker, legal links, sign-in/out
-  stores/[id].tsx            Store detail: info, hours, products/services, add-to-cart
+  (tabs)/account.tsx         Profile summary, theme picker, admin dashboard link (approved store
+                            admins only), legal links, sign-in/out
+  stores/[id].tsx            Store detail: info, hours, products/services (tap through to details)
+  products/[id].tsx          Product details: image, price, description, store link, add-to-cart
+  services/[id].tsx          Service details: image, price, duration, description, store link
   orders/[id].tsx            Order detail
   sign-in.tsx / sign-up.tsx / forgot-password.tsx   Modal auth screens (email + Google)
   account/manage.tsx         Manage profile: name/phone, change email/password, delete account
-  become-store-owner.tsx     Store-owner application form + live application status
+  become-store-owner.tsx     Store-owner application form + live application status + admin link
+                            once approved
   legal/about.tsx, privacy-policy.tsx, terms.tsx
   +not-found.tsx
 ```
@@ -119,6 +124,7 @@ cp apps/mobile/.env.example apps/mobile/.env
 | `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | no | |
 | `EXPO_PUBLIC_FIREBASE_APP_ID` | yes | |
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | no | OAuth 2.0 **Web application** client ID (Google Cloud Console — the one Firebase auto-created when you enabled Google sign-in), used as `webClientId` by `@react-native-google-signin/google-signin` on **both** platforms. **Not** an Android/iOS client ID. If unset, the Google sign-in button is simply hidden — email sign-in still works fully. |
+| `EXPO_PUBLIC_ADMIN_URL` | no | Full URL (including path) of the admin app's sign-in page, e.g. `https://<your-admin-domain>/login` — mirrors the customer web app's `VITE_ADMIN_URL`. Shown as an "Admin Dashboard" row on the Account screen and a link on the "Become a store owner" approval screen, **only** to signed-in users whose profile `role` is `store_admin` or `super_admin` and who are not `suspended`. If unset, those links are simply hidden. Opening it does not grant any permission — the admin app independently authenticates and re-verifies the user's role server-side. |
 
 All of these are `EXPO_PUBLIC_*`, meaning Expo inlines them into the built JS bundle at build
 time — same trust model as `apps/customer`'s `VITE_*` variables (see root README §5): they identify

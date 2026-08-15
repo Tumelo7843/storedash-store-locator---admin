@@ -19,7 +19,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading,
   const isDisabled = disabled || loading;
 
   const backgroundColor =
-    variant === 'primary' ? colors.primary : variant === 'danger' ? '#dc2626' : variant === 'secondary' ? colors.gray100 : 'transparent';
+    variant === 'primary' ? colors.primary : variant === 'danger' ? colors.rose400 : variant === 'secondary' ? colors.gray100 : 'transparent';
   const textColor = variant === 'primary' || variant === 'danger' ? '#ffffff' : colors.gray900;
 
   return (

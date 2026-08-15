@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
-import { ArrowLeft, CheckCircle2, Clock, ShieldCheck, Store as StoreIcon, XCircle } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle2, Clock, ExternalLink, ShieldCheck, Store as StoreIcon, XCircle } from 'lucide-react-native';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { fetchMyApplications, submitStoreOwnerApplication, type StoreOwnerApplicationInput } from '../src/api/applications';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
 import { Button } from '../src/components/Button';
@@ -11,6 +11,7 @@ import { Screen } from '../src/components/Screen';
 import { TextField } from '../src/components/TextField';
 import { useAuth } from '../src/context/AuthContext';
 import { useTheme } from '../src/context/ThemeContext';
+import { env } from '../src/lib/env';
 import { useAsync } from '../src/lib/useAsync';
 import type { StoreOwnerApplication } from '@storedash/shared';
 
@@ -32,7 +33,7 @@ function StatusBanner({ application }: { application: StoreOwnerApplication }) {
   if (application.status === 'pending') {
     return (
       <View style={[styles.banner, { backgroundColor: 'rgba(180,83,9,0.08)', borderColor: 'rgba(180,83,9,0.2)' }]}>
-        <Clock size={18} color="#b45309" />
+        <Clock size={18} color={colors.amber400} />
         <View style={{ flex: 1, gap: 3 }}>
           <Text style={[styles.bannerTitle, { color: colors.gray900 }]}>Application pending review</Text>
           <Text style={[styles.bannerText, { color: colors.gray500 }]}>
@@ -47,12 +48,24 @@ function StatusBanner({ application }: { application: StoreOwnerApplication }) {
     return (
       <View style={[styles.banner, { backgroundColor: 'rgba(5,150,105,0.08)', borderColor: 'rgba(5,150,105,0.2)' }]}>
         <CheckCircle2 size={18} color={colors.emerald400} />
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text style={[styles.bannerTitle, { color: colors.gray900 }]}>You're approved!</Text>
-          <Text style={[styles.bannerText, { color: colors.gray500 }]}>
-            {application.businessName} is live on StoreDash and you're now a store owner. Manage your store from the StoreDash admin dashboard on the
-            web.
-          </Text>
+        <View style={{ flex: 1, gap: 8 }}>
+          <View style={{ gap: 3 }}>
+            <Text style={[styles.bannerTitle, { color: colors.gray900 }]}>You're approved!</Text>
+            <Text style={[styles.bannerText, { color: colors.gray500 }]}>
+              {application.businessName} is live on StoreDash and you're now a store owner. Manage your store's products, services, and orders from the
+              StoreDash admin dashboard on the web.
+            </Text>
+          </View>
+          {env.adminUrl && (
+            <AnimatedPressable
+              haptics
+              onPress={() => Linking.openURL(env.adminUrl)}
+              style={[styles.adminLinkBtn, { backgroundColor: colors.emerald400 }]}
+            >
+              <ExternalLink size={14} color="#fff" />
+              <Text style={styles.adminLinkText}>Go to admin dashboard</Text>
+            </AnimatedPressable>
+          )}
         </View>
       </View>
     );
@@ -203,6 +216,21 @@ const styles = StyleSheet.create({
   bannerText: {
     fontSize: 12,
     lineHeight: 17,
+  },
+  adminLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  adminLinkText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '800',
   },
   formCard: {
     borderWidth: 1,

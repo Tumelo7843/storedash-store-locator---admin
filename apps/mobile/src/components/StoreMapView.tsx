@@ -65,9 +65,8 @@ export function StoreMapView({ stores, selectedStoreId, onSelectStore, userLocat
           <Marker
             key={store.id}
             coordinate={{ latitude: store.lat!, longitude: store.lng! }}
-            title={store.name}
-            description={store.category}
             pinColor={store.id === selectedStoreId ? colors.primary : undefined}
+            tracksViewChanges={false}
             onPress={() => onSelectStore(store.id)}
           />
         ))}

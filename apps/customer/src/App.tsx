@@ -11,6 +11,8 @@ import { HomePage } from './pages/HomePage';
 import { ManageProfilePage } from './pages/ManageProfilePage';
 import { OrderDetailPage } from './pages/OrderDetailPage';
 import { OrdersPage } from './pages/OrdersPage';
+import { ProductDetailsPage } from './pages/ProductDetailsPage';
+import { ServiceDetailsPage } from './pages/ServiceDetailsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SignInPage } from './pages/SignInPage';
 import { SignUpPage } from './pages/SignUpPage';
@@ -25,6 +27,8 @@ export default function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/stores/:id" element={<StorePage />} />
+              <Route path="/products/:id" element={<ProductDetailsPage />} />
+              <Route path="/services/:id" element={<ServiceDetailsPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/orders/:id" element={<OrderDetailPage />} />

@@ -23,7 +23,7 @@ export function LegalScreen({ title, sections }: { title: string; sections: Lega
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.templateNotice, { backgroundColor: 'rgba(180,83,9,0.08)', borderColor: 'rgba(180,83,9,0.2)' }]}>
-          <Text style={styles.templateNoticeText}>
+          <Text style={[styles.templateNoticeText, { color: colors.amber400 }]}>
             Template content — the StoreDash operator should review and replace this before publishing. Last updated {LEGAL_LAST_UPDATED}.
           </Text>
         </View>
@@ -71,7 +71,6 @@ const styles = StyleSheet.create({
   templateNoticeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#b45309',
     lineHeight: 15,
   },
   sectionHeading: {

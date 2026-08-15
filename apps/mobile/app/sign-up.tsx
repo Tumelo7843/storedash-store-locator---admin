@@ -11,12 +11,6 @@ import { useTheme } from '../src/context/ThemeContext';
 import { authErrorMessage } from '../src/lib/authErrors';
 import { isValidEmail, passwordError, passwordStrength } from '../src/lib/validation';
 
-const STRENGTH_META: Record<ReturnType<typeof passwordStrength>, { width: `${number}%`; color: string; label: string }> = {
-  weak: { width: '33%', color: '#dc2626', label: 'Weak' },
-  medium: { width: '66%', color: '#f59e0b', label: 'Medium' },
-  strong: { width: '100%', color: '#059669', label: 'Strong' },
-};
-
 export default function SignUpScreen() {
   const { signUpWithEmail, signInWithGoogle, googleSignInAvailable } = useAuth();
   const router = useRouter();
@@ -28,6 +22,11 @@ export default function SignUpScreen() {
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   const strength = form.password ? passwordStrength(form.password) : null;
+  const STRENGTH_META: Record<ReturnType<typeof passwordStrength>, { width: `${number}%`; color: string; label: string }> = {
+    weak: { width: '33%', color: colors.rose400, label: 'Weak' },
+    medium: { width: '66%', color: colors.amber400, label: 'Medium' },
+    strong: { width: '100%', color: colors.emerald400, label: 'Strong' },
+  };
 
   const handleSubmit = async () => {
     setError('');

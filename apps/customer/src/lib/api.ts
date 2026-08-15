@@ -84,9 +84,19 @@ export async function fetchProducts(params: { storeId?: number; search?: string;
   return { items: data, ...pagination };
 }
 
+export async function fetchProduct(id: number): Promise<Product> {
+  const { data } = await request<{ data: Product }>(`/api/products/${id}`);
+  return data;
+}
+
 export async function fetchServices(params: { storeId?: number; search?: string; category?: string; page?: number; limit?: number } = {}) {
   const { data, pagination } = await request<{ data: Service[]; pagination: ApiPagination }>(`/api/services${toQuery(params)}`);
   return { items: data, ...pagination };
+}
+
+export async function fetchService(id: number): Promise<Service> {
+  const { data } = await request<{ data: Service }>(`/api/services/${id}`);
+  return data;
 }
 
 export async function syncProfile(): Promise<UserProfile> {
