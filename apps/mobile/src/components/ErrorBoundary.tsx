@@ -10,10 +10,11 @@ import { Button } from './Button';
 // white page and no way back, since Expo/RN's red-box diagnostics only show
 // in dev builds. Catches it and offers a way to recover in place instead.
 //
-// TEMPORARY: also surfaces the actual error message/component stack on
-// screen (not just console.error, which isn't visible on a device without a
-// debugger attached) — this is diagnostic scaffolding for tracking down the
-// Services-tab crash and should come back out once that's root-caused.
+// In __DEV__ (or a dev-client build) the fallback also shows the actual
+// error message/stack + a share button, since console.error alone isn't
+// visible on a device without a debugger attached — this is what caught the
+// FlatList numColumns crash in app/stores/[id].tsx. A production build shows
+// only the friendly message; customers never see a raw stack trace.
 interface Props {
   children: ReactNode;
 }
@@ -83,15 +84,17 @@ function ErrorBoundaryFallback({
         This screen ran into a problem. You can try again — your data hasn't been lost.
       </Text>
 
-      <ScrollView style={[styles.detailsBox, { backgroundColor: colors.gray100, borderColor: colors.gray200 }]} contentContainerStyle={{ padding: 10 }}>
-        <Text selectable style={[styles.detailsText, { color: colors.gray700 }]}>
-          {details}
-        </Text>
-      </ScrollView>
+      {__DEV__ && (
+        <ScrollView style={[styles.detailsBox, { backgroundColor: colors.gray100, borderColor: colors.gray200 }]} contentContainerStyle={{ padding: 10 }}>
+          <Text selectable style={[styles.detailsText, { color: colors.gray700 }]}>
+            {details}
+          </Text>
+        </ScrollView>
+      )}
 
       <View style={{ width: 220, marginTop: 6, gap: 8 }}>
         <Button label="Try again" onPress={recover} variant="secondary" />
-        <Button label="Share error details" onPress={shareDetails} variant="ghost" />
+        {__DEV__ && <Button label="Share error details" onPress={shareDetails} variant="ghost" />}
       </View>
     </View>
   );

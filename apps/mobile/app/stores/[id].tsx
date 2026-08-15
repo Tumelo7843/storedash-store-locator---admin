@@ -283,6 +283,7 @@ export default function StoreDetailScreen() {
     <Screen edges={['top']}>
       {tab === 'products' ? (
         <FlatList
+          key="products"
           data={productsList.items}
           keyExtractor={(p) => String(p.id)}
           numColumns={2}
@@ -312,6 +313,7 @@ export default function StoreDetailScreen() {
         />
       ) : (
         <FlatList
+          key="services"
           data={servicesList.items}
           keyExtractor={(s) => String(s.id)}
           contentContainerStyle={styles.listContent}
